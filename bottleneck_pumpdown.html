@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bottleneck-Limited Pumpdown</title>
+<style>
+  :root { color-scheme: light dark; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1:   #fcfcfb;
+    --page:        #f9f9f7;
+    --text-1:      #0b0b0b;
+    --text-2:      #52514e;
+    --muted:       #898781;
+    --grid:        #e1e0d9;
+    --baseline:    #c3c2b7;
+    --border:      rgba(11,11,11,0.10);
+    --band:        rgba(11,11,11,0.045);
+    --series-1:    #2a78d6;   /* medium chamber / S_eff */
+    --series-2:    #eb6834;   /* pump side / conductance */
+    --series-3:    #1baf7a;   /* ideal reference */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1: #1a1a19; --page: #0d0d0d;
+      --text-1: #ffffff; --text-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --baseline: #383835;
+      --border: rgba(255,255,255,0.10); --band: rgba(255,255,255,0.055);
+      --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19; --page: #0d0d0d;
+    --text-1: #ffffff; --text-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --baseline: #383835;
+    --border: rgba(255,255,255,0.10); --band: rgba(255,255,255,0.055);
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body.viz-root {
+    background: var(--page); color: var(--text-1);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 20px 16px 40px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 14px; }
+  h1 { font-size: 21px; font-weight: 650; letter-spacing: -0.01em; }
+  .sub { color: var(--text-2); max-width: 78ch; }
+
+  .app { display: grid; grid-template-columns: minmax(0, 1fr) 292px; gap: 14px; align-items: start; }
+  @media (max-width: 900px) { .app { grid-template-columns: 1fr; } .sidebar { position: static; } }
+
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+  }
+  .card h2 { font-size: 12.5px; font-weight: 600; color: var(--text-2);
+             text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .sect { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 12px; }
+
+  /* schematic */
+  .schemwrap { position: relative; }
+  .schemwrap svg { display: block; width: 100%; height: auto; }
+  .schemwrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .playbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  .playbar button {
+    background: var(--series-1); border: none; color: #fff; font: inherit; font-weight: 600;
+    border-radius: 7px; padding: 6px 16px; cursor: pointer; min-width: 84px;
+  }
+  .playbar .scrubwrap { flex: 1; min-width: 160px; }
+  .scrubwrap input[type=range] { width: 100%; accent-color: var(--series-1); display: block; }
+  .ruler { position: relative; height: 16px; margin: 0 7px; }
+  .ruler .tk { position: absolute; top: 0; width: 1px; height: 4px; background: var(--baseline); }
+  .ruler .tl { position: absolute; top: 4px; transform: translateX(-50%); font-size: 10px;
+               color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .chip {
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px;
+    color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 13px;
+  }
+  .chip b { color: var(--text-1); font-weight: 600; }
+
+  /* sidebar toolbar */
+  .sidebar { position: sticky; top: 12px; display: grid; gap: 14px; }
+  .ctl { margin-bottom: 12px; }
+  .ctl:last-child { margin-bottom: 2px; }
+  .ctl label { display: flex; justify-content: space-between; align-items: center; gap: 8px;
+               color: var(--text-2); font-size: 12.5px; margin-bottom: 3px; }
+  .ctl .valrow { display: inline-flex; align-items: center; gap: 5px; }
+  .ctl input.val {
+    width: 78px; background: transparent; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-1); font: inherit; font-weight: 600; padding: 2px 7px; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .ctl input.val:focus { outline: 1.5px solid var(--series-1); outline-offset: -1px; }
+  .ctl .unit { color: var(--muted); font-size: 12px; min-width: 26px; }
+  .ctl input[type=range] { width: 100%; accent-color: var(--series-1); }
+  .ck { display: flex; gap: 8px; align-items: flex-start; color: var(--text-1) !important;
+        font-size: 13px !important; cursor: pointer; }
+  .ck input[type=checkbox] { accent-color: var(--series-1); width: 15px; height: 15px; margin-top: 2px; }
+
+  /* results */
+  .hero-lbl { color: var(--text-2); font-size: 12.5px; }
+  .hero-val { font-size: 46px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+  .hero-note { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .res { display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+         padding: 7px 0; border-top: 1px solid var(--border); }
+  .res:first-of-type { margin-top: 10px; }
+  .res .k { color: var(--text-2); font-size: 12.5px; }
+  .res .v { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .res-note { color: var(--muted); font-size: 11.5px; margin-top: -4px; padding-bottom: 6px; }
+
+  /* charts */
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; color: var(--text-2); font-size: 12.5px; }
+  .legend .it { display: inline-flex; align-items: center; gap: 6px; }
+  .legend svg { width: 22px; height: 8px; }
+  .tip {
+    position: absolute; pointer-events: none; display: none; z-index: 3;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 10px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  .tip .t { color: var(--text-2); margin-bottom: 3px; }
+  .tip .row { display: flex; align-items: center; gap: 6px; }
+  .tip .sw { width: 9px; height: 9px; border-radius: 3px; }
+
+  .explain { color: var(--text-2); display: grid; gap: 8px; max-width: 88ch; }
+  .explain b { color: var(--text-1); }
+  .explain code {
+    font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--band); border-radius: 4px; padding: 1px 5px; white-space: nowrap;
+  }
+  .fine { color: var(--muted); font-size: 12px; max-width: 88ch; }
+  text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+</style>
+</head>
+<body class="viz-root">
+<div class="wrap">
+  <div>
+    <h1>Bottleneck-limited pumpdown: viscous vs. molecular flow</h1>
+    <div class="sub">A turbopump hangs off a small manifold, connected to the chamber you actually
+    care about through a narrow tube. Near atmosphere the tube conducts like a fire hose and the pump is the
+    limit; once the mean free path outgrows the tube bore, conductance collapses to a fixed geometric value
+    and the tube — not the pump — sets how fast the chamber empties.</div>
+  </div>
+
+  <div class="app">
+    <!-- ============ model panel ============ -->
+    <div class="card">
+      <h2>System</h2>
+      <div class="schemwrap">
+        <svg id="schem" viewBox="0 0 760 300" role="img" aria-label="Schematic: turbopump, small manifold, bottleneck tube, medium chamber"></svg>
+        <canvas id="parts"></canvas>
+      </div>
+      <div class="playbar">
+        <button id="play">Play</button>
+        <div class="scrubwrap">
+          <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="playback time (log scale)">
+          <div class="ruler" id="ruler"></div>
+        </div>
+        <span class="chip">t = <b id="tOut">0 s</b></span>
+        <span class="chip">playback <b id="spdOut">–</b></span>
+        <span class="chip">regime: <b id="regOut">–</b></span>
+        <span class="chip">mean free path <b id="mfpOut">–</b> vs bore <b id="dOut">–</b></span>
+      </div>
+
+      <div class="sect">
+        <div class="charts">
+          <div>
+            <h2>Pressure vs. time</h2>
+            <div class="legend" id="leg1"></div>
+            <div class="chart" id="chart1"></div>
+          </div>
+          <div>
+            <h2>Speed delivered to chamber vs. pressure</h2>
+            <div class="legend" id="leg2"></div>
+            <div class="chart" id="chart2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ right toolbar ============ -->
+    <div class="sidebar">
+      <div class="card">
+        <h2>Parameters</h2>
+        <div id="controls"></div>
+      </div>
+      <div class="card">
+        <h2>Results</h2>
+        <div class="hero-lbl">Bottleneck slowdown to reach 10⁻⁶ Torr</div>
+        <div class="hero-val" id="tileSlow">–</div>
+        <div class="hero-note">vs. the same pump bolted straight onto the chamber</div>
+        <div class="res"><span class="k">Time to 10⁻⁶ Torr, through bottleneck</span><span class="v" id="tileT">–</span></div>
+        <div class="res-note" id="tileTnote"></div>
+        <div class="res"><span class="k">Time to 10⁻⁶ Torr, no bottleneck</span><span class="v" id="tileTi">–</span></div>
+        <div class="res"><span class="k">Molecular conductance of tube</span><span class="v" id="tileC">–</span></div>
+        <div class="res-note" id="tileCnote"></div>
+        <div class="res" id="rgaRow1" style="display:none"><span class="k">H₂O partial at RGA (manifold)</span><span class="v" id="tileRga">–</span></div>
+        <div class="res-note" id="rgaNote" style="display:none">at end of run; an RGA only operates below ~10⁻⁴ Torr</div>
+        <div class="res" id="rgaRow2" style="display:none"><span class="k">Chamber → RGA H₂O attenuation</span><span class="v" id="tileAtt">–</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card explain">
+    <div><b>Why the bottleneck stops making sense at high vacuum.</b> Gas flow through a tube is characterized
+    by its conductance C (L/s), and the pump speed the chamber actually feels is the series combination
+    <code>S_eff = (1/S + 1/C)⁻¹</code> — the smaller of the two always wins.</div>
+    <div><b>Viscous regime</b> (λ ≪ d): molecules collide with each other constantly, so gas moves as a bulk
+    fluid driven by pressure gradient — Poiseuille flow, <code>C ≈ 180 · d⁴ · P̄ / L</code> (cm, Torr → L/s).
+    Conductance is proportional to pressure and is enormous near atmosphere, so the tube is invisible and the
+    pump is the limit. Your fluid-flow intuition works here.</div>
+    <div><b>Molecular regime</b> (λ ≳ d): a molecule crosses the whole tube without meeting another molecule.
+    There is no "flow" to push — each molecule wanders by wall bounces and only by chance finds the exit. Conductance
+    collapses to a pressure-independent, purely geometric value <code>C_mol ≈ 12.1 · d³ / (L + 4d/3)</code>,
+    which for a narrow tube can be orders of magnitude below the pump speed. The turbopump can remove everything
+    that arrives, but almost nothing arrives: <code>S_eff → C_mol</code>, no matter how big the pump is.
+    That is why time-to-base scales so brutally with a small bore at high vacuum — and why d⁴ vs d³ matters
+    far less than the loss of the pressure term.</div>
+    <div>Mean free path for air at 20 °C: <code>λ = 5×10⁻³ / P</code> cm·Torr — the classic "5 microns at
+    1 Torr". Regime boundaries drawn at Kn = λ/d of 0.01 (viscous) and 0.5 (molecular).</div>
+    <div class="fine">Model: air at 20 °C; two lumped volumes coupled by
+    C(P̄) = C_viscous + C_molecular (Knudsen-interpolation approximation); turbopump idealized as constant
+    speed S down to a 10⁻⁹ Torr ultimate — a real turbo needs a backing pump and only reaches full speed below
+    ~10⁻² Torr, so read the viscous leg as the roughing phase; laminar viscous flow (no choked-flow correction
+    at the very start). With adhesive outgassing enabled, a 20 cm² H₂O source at 85 °C
+    (q(1 h) = 5×10⁻⁵ Torr·L/s/cm², decaying ∝ 1/t as adsorbed water depletes) feeds the chamber, and H₂O is
+    tracked as its own species — same viscous conductance (bulk flow carries everything), molecular conductance
+    scaled by √(29/18) ≈ 1.27 since C_mol ∝ v̄ ∝ 1/√M. Wall re-adsorption elsewhere is neglected, and the
+    turbo is assumed to pump H₂O at full speed. Integrated with backward Euler on an adaptive log-time grid.</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ---------------- physics: air, 20 C; units cm, L, s, Torr ---------------- */
+const PU = 1e-9;          // turbopump ultimate pressure, Torr
+const LAM = 5.0e-3;       // lambda*P, cm*Torr
+const TARGET = 1e-6;      // target pressure for the results panel, Torr
+const FW = Math.sqrt(29 / 18);   // molecular-speed factor for H2O vs air (v ~ 1/sqrt(M))
+const OG_A = 20, OG_Q1H = 5e-5;  // adhesive area cm^2; H2O outgassing rate at 85 C, 1 h, Torr*L/s/cm^2
+const Qog = t => OG_A * OG_Q1H * 3600 / Math.max(t, 60);  // total H2O throughput, ~1/t desorption decay
+
+const mfp = P => LAM / P;                              // cm
+const condMol = (d, L) => 12.1 * d*d*d / (L + 1.333*d); // L/s, end-corrected
+const condVis = (d, L, Pav) => 180 * d*d*d*d / L * Pav; // L/s (Torr)
+const cond    = (d, L, Pav) => condVis(d, L, Pav) + condMol(d, L);
+const knudsen = (P, d) => mfp(P) / d;
+const regime  = Kn => Kn > 0.5 ? "molecular" : (Kn < 0.01 ? "viscous" : "transitional");
+
+/* one backward-Euler step for one gas species (Q = source into chamber, Torr*L/s) */
+function beStep(P1, P2, C, Q, Pu, p, dt) {
+  const a11 = 1 + dt*(C + p.S)/p.V1, a12 = -dt*C/p.V1;
+  const a21 = -dt*C/p.V2,            a22 = 1 + dt*C/p.V2;
+  const b1 = P1 + dt*p.S*Pu/p.V1,    b2 = P2 + dt*Q/p.V2;
+  const det = a11*a22 - a12*a21;
+  return [(b1*a22 - a12*b2)/det, (a11*b2 - a21*b1)/det];
+}
+
+/* two-volume, two-species (air + outgassed H2O) pumpdown on an adaptive log grid */
+function simulate(p) {
+  let P1a = p.P0, P2a = p.P0, P1w = 0, P2w = 0, t = 0, dt = 1e-7;
+  const T = [], A1 = [], A2 = [], W1 = [], W2 = [];
+  let lastRec = 0, steps = 0;
+  const rec = () => {
+    T.push(Math.max(t, 1e-7));
+    A1.push(P1a + P1w); A2.push(P2a + P2w);
+    W1.push(Math.max(P1w, 1e-12)); W2.push(Math.max(P2w, 1e-12));
+  };
+  rec();
+  const tMax = p.og ? 1e6 : 1e9;   // with 1/t outgassing the decay never ends; cap at ~11 days
+  while (P2a + P2w > 2e-9 && t < tMax && steps < 60000) {
+    steps++;
+    const Cv = condVis(p.d, p.L, 0.5 * ((P1a + P1w) + (P2a + P2w)));  // viscous term uses mean total pressure
+    const Cm = condMol(p.d, p.L);
+    const Q = p.og ? Qog(t) : 0;
+    const na = beStep(P1a, P2a, Cv + Cm, 0, PU, p, dt);
+    const nw = beStep(P1w, P2w, Cv + Cm * FW, Q, 0, p, dt);
+    const rel = Math.max(
+      Math.abs(na[0] + nw[0] - (P1a + P1w)) / Math.max(P1a + P1w, 1e-10),
+      Math.abs(na[1] + nw[1] - (P2a + P2w)) / Math.max(P2a + P2w, 1e-10));
+    if (rel > 0.25 && dt > 1e-8) { dt *= 0.5; continue; }
+    t += dt; [P1a, P2a] = na; [P1w, P2w] = nw;
+    if (t >= lastRec * 1.05) { rec(); lastRec = t; }
+    dt = Math.min(dt * 1.2, 0.02*t + 1e-7);
+  }
+  rec();
+  return { T, P1: A1, P2: A2, W1, W2, tEnd: Math.max(t, 1e-6) };
+}
+
+/* log-log interpolation of Y(x) on ascending X */
+function interpLog(X, Y, x) {
+  if (x <= X[0]) return Y[0];
+  if (x >= X[X.length-1]) return Y[Y.length-1];
+  let lo = 0, hi = X.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; (X[m] <= x ? lo = m : hi = m); }
+  const f = (Math.log(x) - Math.log(X[lo])) / (Math.log(X[hi]) - Math.log(X[lo]));
+  return Math.exp(Math.log(Y[lo]) + f * (Math.log(Y[hi]) - Math.log(Y[lo])));
+}
+/* first time Y crosses below target */
+function timeToReach(X, Y, tgt) {
+  for (let i = 1; i < X.length; i++) if (Y[i] <= tgt) {
+    const f = (Math.log(tgt) - Math.log(Y[i-1])) / (Math.log(Y[i]) - Math.log(Y[i-1]));
+    return Math.exp(Math.log(X[i-1]) + f * (Math.log(X[i]) - Math.log(X[i-1])));
+  }
+  return null;
+}
+
+/* ---------------- formatting ---------------- */
+const SUP = { "-":"⁻","0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹" };
+const sup10 = e => "10" + String(e).split("").map(c => SUP[c]).join("");
+function fmtP(P) {
+  if (!isFinite(P) || P <= 0) return "–";
+  const e = Math.floor(Math.log10(P)), m = P / 10**e;
+  if (e >= 0 && e <= 3) return (Math.round(P * 100) / 100).toLocaleString();
+  return (m >= 9.95 ? "1×" + sup10(e+1) : m.toFixed(1) + "×" + sup10(e));
+}
+function fmtTime(s) {
+  if (s == null || !isFinite(s)) return "–";
+  if (s < 1e-3) return (s*1e6).toFixed(0) + " µs";
+  if (s < 1) return (s*1e3).toFixed(0) + " ms";
+  if (s < 120) return s.toPrecision(3) + " s";
+  if (s < 7200) return (s/60).toPrecision(3) + " min";
+  if (s < 172800) return (s/3600).toPrecision(3) + " h";
+  return (s/86400).toPrecision(3) + " days";
+}
+function fmtLen(cm) {
+  if (cm >= 1e5) return (cm/1e5).toPrecision(2) + " km";
+  if (cm >= 100) return (cm/100).toPrecision(2) + " m";
+  if (cm >= 0.1) return (cm*10).toPrecision(2) + " mm";
+  if (cm >= 1e-4) return (cm*1e4).toPrecision(2) + " µm";
+  return (cm*1e7).toPrecision(2) + " nm";
+}
+const fmtS = v => v >= 100 ? Math.round(v).toLocaleString() : v.toPrecision(2);
+/* numeric text-field display: plain number, up to 4 significant digits */
+function fmtVal(v) {
+  if (!isFinite(v)) return "";
+  if (v >= 1000) return String(Math.round(v));
+  return String(+v.toPrecision(v >= 1 ? 4 : 3));
+}
+
+/* ---------------- controls (slider + typeable field) ---------------- */
+const PARAMS = [
+  { key:"P0", label:"Starting pressure", unit:"Torr", lo:0.01, hi:760, def:760 },
+  { key:"S",  label:"Pump speed (turbo)", unit:"L/s", lo:50, hi:20000, def:1500 },
+  { key:"d",  label:"Bottleneck diameter", unit:"mm", lo:0.2, hi:10, def:1, toDisp:v=>v*10, fromDisp:v=>v/10 },
+  { key:"L",  label:"Bottleneck length", unit:"cm", lo:2, hi:30, def:10 },
+  { key:"V1", label:"Manifold volume", unit:"L", lo:0.5, hi:20, def:2 },
+  { key:"V2", label:"Chamber volume", unit:"L", lo:5, hi:1000, def:100 },
+];
+const state = {};
+const ctlBox = document.getElementById("controls");
+for (const p of PARAMS) {
+  state[p.key] = p.def;
+  const toDisp = p.toDisp || (v => v), fromDisp = p.fromDisp || (v => v);
+  const div = document.createElement("div");
+  div.className = "ctl";
+  div.innerHTML = `<label>${p.label}
+      <span class="valrow"><input class="val" type="text" inputmode="decimal" id="t_${p.key}"
+        aria-label="${p.label} value"><span class="unit">${p.unit}</span></span></label>
+    <input type="range" min="0" max="1000" id="s_${p.key}" aria-label="${p.label}">`;
+  ctlBox.appendChild(div);
+  const sld = div.querySelector('input[type=range]');
+  const txt = div.querySelector('input.val');
+  const syncText = () => { if (document.activeElement !== txt) txt.value = fmtVal(toDisp(state[p.key])); };
+  const syncSlider = () => { sld.value = Math.round(1000 * Math.log(state[p.key]/p.lo) / Math.log(p.hi/p.lo)); };
+  syncSlider(); syncText();
+  sld.addEventListener("input", () => {
+    state[p.key] = p.lo * Math.pow(p.hi/p.lo, sld.value/1000);
+    syncText();
+    recompute();
+  });
+  txt.addEventListener("keydown", ev => { if (ev.key === "Enter") txt.blur(); });
+  txt.addEventListener("change", () => {
+    const raw = parseFloat(txt.value.replace(/,/g, ""));
+    if (isFinite(raw) && raw > 0) {
+      state[p.key] = Math.min(p.hi, Math.max(p.lo, fromDisp(raw)));
+      syncSlider();
+      recompute();
+    }
+    txt.blur();
+    syncText();
+  });
+}
+/* outgassing toggle */
+state.og = false;
+{
+  const div = document.createElement("div");
+  div.className = "ctl";
+  div.innerHTML = `<label class="ck"><input type="checkbox" id="ogChk">
+      <span>Adhesive outgassing<br><span class="fine">H₂O source in chamber, 85 °C</span></span></label>
+    <div class="fine" style="margin-top:4px">q(1 h) = 5×10⁻⁵ Torr·L/s/cm² × 20 cm², decaying ∝ 1/t</div>`;
+  ctlBox.appendChild(div);
+  div.querySelector("#ogChk").addEventListener("change", ev => {
+    state.og = ev.target.checked;
+    recompute();
+  });
+}
+
+/* ---------------- svg helpers ---------------- */
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+
+/* ---------------- log-log chart ---------------- */
+function makeChart(rootId, legId, cfg) {
+  const root = document.getElementById(rootId);
+  const W = 500, H = 330, mL = 52, mR = 14, mT = 12, mB = 44;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, root);
+  const clipId = rootId + "_clip";
+  const defs = el("defs", {}, svg);
+  const cp = el("clipPath", { id: clipId }, defs);
+  el("rect", { x: mL, y: mT, width: W-mL-mR, height: H-mT-mB }, cp);
+  const gBand = el("g", {}, svg);
+  const gGrid = el("g", {}, svg);
+  const gData = el("g", { "clip-path": `url(#${clipId})` }, svg);
+  const gAnno = el("g", {}, svg);
+  const gCur  = el("g", {}, svg);
+  const tip = document.createElement("div");
+  tip.className = "tip"; root.appendChild(tip);
+
+  let M = null; // current model {x0,x1,y0,y1,series,bands}
+  const xPix = v => mL + (Math.log10(v) - Math.log10(M.x0)) / (Math.log10(M.x1) - Math.log10(M.x0)) * (W-mL-mR);
+  const yPix = v => mT + (Math.log10(M.y1) - Math.log10(v)) / (Math.log10(M.y1) - Math.log10(M.y0)) * (H-mT-mB);
+
+  function decades(a, b) {
+    const out = [];
+    for (let e = Math.ceil(Math.log10(a) - 1e-9); e <= Math.floor(Math.log10(b) + 1e-9); e++) out.push(e);
+    return out;
+  }
+  function draw(model) {
+    M = model;
+    gBand.innerHTML = gGrid.innerHTML = gData.innerHTML = gAnno.innerHTML = "";
+    /* regime bands */
+    for (const b of (M.bands || [])) {
+      const isX = cfg.bandAxis === "x";
+      const lo = Math.max(b.lo, isX ? M.x0 : M.y0), hi = Math.min(b.hi, isX ? M.x1 : M.y1);
+      if (hi <= lo) continue;
+      let r;
+      if (isX) r = { x: xPix(lo), y: mT, w: xPix(hi) - xPix(lo), h: H-mT-mB };
+      else     r = { x: mL, y: yPix(hi), w: W-mL-mR, h: yPix(lo) - yPix(hi) };
+      if (b.wash) el("rect", { x:r.x, y:r.y, width:r.w, height:r.h, fill:"var(--band)" }, gBand);
+      if ((isX ? r.w : r.h) > 16) {
+        const t = el("text", {
+          x: isX ? r.x + r.w/2 : W-mR-5,
+          y: isX ? mT + 11 : r.y + 11,
+          "text-anchor": isX ? "middle" : "end",
+          "font-size": 10, fill: "var(--muted)"
+        }, gBand);
+        t.textContent = b.label;
+      }
+    }
+    /* grid + ticks */
+    const xd = decades(M.x0, M.x1), yd = decades(M.y0, M.y1);
+    const xStep = xd.length > 14 ? 3 : xd.length > 8 ? 2 : 1;
+    const yStep = yd.length > 14 ? 3 : yd.length > 8 ? 2 : 1;
+    for (const e of xd) {
+      const x = xPix(10**e);
+      el("line", { x1:x, y1:mT, x2:x, y2:H-mB, stroke:"var(--grid)", "stroke-width":1 }, gGrid);
+      if (((e % xStep) + xStep) % xStep === 0) {
+        const t = el("text", { x, y: H-mB+16, "text-anchor":"middle", "font-size":11,
+                               fill:"var(--muted)", style:"font-variant-numeric:tabular-nums" }, gGrid);
+        t.textContent = sup10(e);
+      }
+    }
+    for (const e of yd) {
+      const y = yPix(10**e);
+      el("line", { x1:mL, y1:y, x2:W-mR, y2:y, stroke:"var(--grid)", "stroke-width":1 }, gGrid);
+      if (((e % yStep) + yStep) % yStep === 0) {
+        const t = el("text", { x: mL-6, y: y+3.5, "text-anchor":"end", "font-size":11,
+                               fill:"var(--muted)", style:"font-variant-numeric:tabular-nums" }, gGrid);
+        t.textContent = sup10(e);
+      }
+    }
+    el("line", { x1:mL, y1:H-mB, x2:W-mR, y2:H-mB, stroke:"var(--baseline)", "stroke-width":1 }, gGrid);
+    el("line", { x1:mL, y1:mT, x2:mL, y2:H-mB, stroke:"var(--baseline)", "stroke-width":1 }, gGrid);
+    const xl = el("text", { x: mL + (W-mL-mR)/2, y: H-8, "text-anchor":"middle", "font-size":11.5, fill:"var(--text-2)" }, gGrid);
+    xl.textContent = cfg.xLabel;
+    const yl = el("text", { x: 12, y: mT + (H-mT-mB)/2, "font-size":11.5, fill:"var(--text-2)",
+                            transform: `rotate(-90 12 ${mT + (H-mT-mB)/2})`, "text-anchor":"middle" }, gGrid);
+    yl.textContent = cfg.yLabel;
+    /* series */
+    for (const s of M.series) {
+      let dPath = "", pen = false;
+      for (let i = 0; i < s.X.length; i++) {
+        const vx = s.X[i], vy = s.Y[i];
+        if (!(vx > 0 && vy > 0 && isFinite(vx) && isFinite(vy))) { pen = false; continue; }
+        dPath += (pen ? "L" : "M") + xPix(vx).toFixed(1) + " " + yPix(vy).toFixed(1);
+        pen = true;
+      }
+      el("path", { d: dPath, fill: "none", stroke: s.color, "stroke-width": 2,
+                   "stroke-linejoin": "round", "stroke-linecap": "round",
+                   ...(s.dash ? { "stroke-dasharray": s.dash } : {}) }, gData);
+    }
+    /* selective direct labels */
+    for (const a of (M.labels || [])) {
+      const t = el("text", { x: Math.min(xPix(a.x), W-mR-4), y: Math.max(yPix(a.y) + (a.dy||0), mT+10),
+        "text-anchor": a.anchor || "start", "font-size": 10.5, fill: "var(--text-2)" }, gAnno);
+      t.textContent = a.text;
+    }
+  }
+  /* time cursor (chart 1) */
+  let curLine = null, curDot = null;
+  function setCursor(x, seriesIdx) {
+    if (!M) return;
+    if (x == null || x < M.x0 || x > M.x1) { gCur.innerHTML = ""; curLine = null; return; }
+    if (!curLine) {
+      curLine = el("line", { stroke: "var(--muted)", "stroke-width": 1, "stroke-dasharray": "2 3" }, gCur);
+      curDot = el("circle", { r: 4.5, fill: "var(--series-1)", stroke: "var(--surface-1)", "stroke-width": 2 }, gCur);
+    }
+    const px = xPix(x);
+    curLine.setAttribute("x1", px); curLine.setAttribute("x2", px);
+    curLine.setAttribute("y1", mT); curLine.setAttribute("y2", H-mB);
+    const s = M.series[seriesIdx];
+    const y = interpLog(s.X, s.Y, x);
+    curDot.setAttribute("cx", px); curDot.setAttribute("cy", Math.min(yPix(y), H-mB));
+  }
+  /* hover crosshair + tooltip */
+  const hov = el("line", { stroke: "var(--muted)", "stroke-width": 1, visibility: "hidden" }, gAnno);
+  svg.addEventListener("mousemove", ev => {
+    if (!M) return;
+    const r = svg.getBoundingClientRect();
+    const px = (ev.clientX - r.left) / r.width * W;
+    if (px < mL || px > W-mR) { tip.style.display = "none"; hov.setAttribute("visibility","hidden"); return; }
+    const x = 10 ** (Math.log10(M.x0) + (px-mL)/(W-mL-mR) * (Math.log10(M.x1)-Math.log10(M.x0)));
+    hov.setAttribute("x1", px); hov.setAttribute("x2", px);
+    hov.setAttribute("y1", mT); hov.setAttribute("y2", H-mB);
+    hov.setAttribute("visibility", "visible");
+    let html = `<div class="t">${cfg.xTip(x)}</div>`;
+    for (const s of M.series) {
+      const y = interpLog(s.X, s.Y, x);
+      html += `<div class="row"><span class="sw" style="background:${s.color}"></span>${s.name}: <b>${cfg.yTip(y)}</b></div>`;
+    }
+    tip.innerHTML = html;
+    tip.style.display = "block";
+    const rw = root.getBoundingClientRect();
+    let tx = (ev.clientX - rw.left) + 14;
+    if (tx + tip.offsetWidth > rw.width - 8) tx = (ev.clientX - rw.left) - tip.offsetWidth - 14;
+    tip.style.left = tx + "px";
+    tip.style.top = Math.max(4, ev.clientY - rw.top - tip.offsetHeight - 10) + "px";
+  });
+  svg.addEventListener("mouseleave", () => { tip.style.display = "none"; hov.setAttribute("visibility","hidden"); });
+
+  /* legend */
+  const leg = document.getElementById(legId);
+  function setLegend(items) {
+    leg.innerHTML = "";
+    for (const it of items) {
+      const d = document.createElement("span");
+      d.className = "it";
+      d.innerHTML = `<svg viewBox="0 0 22 8"><line x1="1" y1="4" x2="21" y2="4" stroke="${it.color}"
+        stroke-width="2.5" ${it.dash ? `stroke-dasharray="${it.dash}"` : ""}/></svg>${it.name}`;
+      leg.appendChild(d);
+    }
+  }
+  return { draw, setCursor, setLegend };
+}
+
+const c1 = makeChart("chart1", "leg1", {
+  xLabel: "time (s)", yLabel: "pressure (Torr)", bandAxis: "y",
+  xTip: x => "t = " + fmtTime(x), yTip: y => fmtP(y) + " Torr",
+});
+const c2 = makeChart("chart2", "leg2", {
+  xLabel: "chamber pressure (Torr) — pumpdown proceeds ⟵", yLabel: "speed / conductance (L/s)", bandAxis: "x",
+  xTip: x => "P = " + fmtP(x) + " Torr", yTip: y => fmtS(y) + " L/s",
+});
+
+/* ---------------- schematic ---------------- */
+const schem = document.getElementById("schem");
+let geo = null;
+function layout(p) {
+  const cy = 148;
+  const pump = { x: 22, y: cy-78, w: 112, h: 156 };
+  const s1 = 44 + 60 * Math.log(p.V1/0.5) / Math.log(40);
+  const v1 = { x: pump.x + pump.w + 16, y: cy - s1/2, w: s1, h: s1 };
+  const Lpx = 55 + 185 * Math.log(p.L/2) / Math.log(15);
+  const dpx = 7 + 58 * Math.log(p.d/0.2) / Math.log(50);
+  const tube = { x: v1.x + v1.w, y: cy - dpx/2, w: Lpx, h: dpx };
+  const s = 62 + 138 * Math.log(p.V2/5) / Math.log(200);
+  const v2 = { x: tube.x + tube.w, y: cy - s/2, w: s, h: s };
+  return { pump, v1, tube, v2, cy, k: dpx / p.d };
+}
+function drawSchem(p) {
+  geo = layout(p);
+  const { pump, v1, tube, v2, cy } = geo;
+  schem.innerHTML = "";
+  const line = "var(--text-2)";
+  /* pump body + blade stages */
+  el("rect", { x: pump.x, y: pump.y, width: pump.w, height: pump.h, rx: 10,
+               fill: "none", stroke: line, "stroke-width": 1.6 }, schem);
+  for (let i = 1; i <= 5; i++) {
+    const y = pump.y + i * pump.h/6;
+    const tilt = (i % 2 ? 4 : -4);            // alternating rotor/stator stages
+    for (let j = 0; j < 5; j++) {
+      const x = pump.x + 17 + j * 19;
+      el("line", { x1: x, y1: y + tilt, x2: x + 10, y2: y - tilt,
+                   stroke: "var(--series-1)", "stroke-width": 2, "stroke-linecap":"round", opacity: 0.75 }, schem);
+    }
+  }
+  const snow = el("text", { x: pump.x+pump.w/2, y: pump.y-8, "text-anchor":"middle",
+                            "font-size": 12, fill: "var(--text-2)" }, schem);
+  snow.textContent = "turbo pump";
+  const slab = el("text", { x: pump.x+pump.w/2, y: pump.y+pump.h+18, "text-anchor":"middle",
+                            "font-size": 11.5, fill: "var(--muted)" }, schem);
+  slab.textContent = "S = " + fmtS(p.S) + " L/s";
+  /* duct pump->manifold (wide, unrestricted) */
+  el("rect", { x: pump.x+pump.w, y: cy-22, width: 16, height: 44, fill: "none", stroke: line, "stroke-width": 1.4 }, schem);
+  /* manifold */
+  el("rect", { x: v1.x, y: v1.y, width: v1.w, height: v1.h, rx: 6, fill: "none", stroke: line, "stroke-width": 1.6 }, schem);
+  const v1lab = el("text", { x: v1.x+v1.w/2, y: v1.y+v1.h+18, "text-anchor":"middle", "font-size": 11.5, fill: "var(--muted)" }, schem);
+  v1lab.textContent = "manifold " + fmtS(p.V1) + " L";
+  const p1t = el("text", { x: v1.x+v1.w/2, y: v1.y-10, "text-anchor":"middle",
+                           fill: "var(--text-1)", "font-weight": 650, id: "p1txt" }, schem);
+  el("tspan", { "font-size": 11, fill: "var(--muted)", "font-weight": 500 }, p1t).textContent = "P₁ ";
+  el("tspan", { "font-size": 17, id: "p1val" }, p1t);
+  el("tspan", { "font-size": 11, fill: "var(--muted)", "font-weight": 500 }, p1t).textContent = " Torr";
+  /* tube */
+  el("rect", { x: tube.x, y: tube.y, width: tube.w, height: Math.max(tube.h,2), fill: "var(--band)",
+               stroke: line, "stroke-width": 1.6 }, schem);
+  const tl = el("text", { x: tube.x+tube.w/2, y: cy + Math.max(tube.h/2,4) + 30, "text-anchor":"middle",
+                          "font-size": 11.5, fill: "var(--muted)" }, schem);
+  tl.textContent = "⌀ " + (p.d*10).toPrecision(3) + " mm × " + p.L.toPrecision(3) + " cm";
+  /* mean-free-path scale bar under tube (updated live) */
+  el("g", { id: "mfpbar" }, schem);
+  /* chamber */
+  el("rect", { x: v2.x, y: v2.y, width: v2.w, height: v2.h, rx: 8, fill: "none", stroke: line, "stroke-width": 1.6 }, schem);
+  const v2lab = el("text", { x: v2.x+v2.w/2, y: v2.y+v2.h+18, "text-anchor":"middle", "font-size": 11.5, fill: "var(--muted)" }, schem);
+  v2lab.textContent = "chamber " + fmtS(p.V2) + " L";
+  const p2t = el("text", { x: v2.x+v2.w/2, y: v2.y-10, "text-anchor":"middle",
+                           fill: "var(--text-1)", "font-weight": 650, id: "p2txt" }, schem);
+  el("tspan", { "font-size": 11, fill: "var(--muted)", "font-weight": 500 }, p2t).textContent = "P₂ ";
+  el("tspan", { "font-size": 17, id: "p2val" }, p2t);
+  el("tspan", { "font-size": 11, fill: "var(--muted)", "font-weight": 500 }, p2t).textContent = " Torr";
+  /* adhesive H2O source + RGA readouts */
+  if (p.og) {
+    const bw = Math.max(30, v2.w * 0.4), bh = 10;
+    const bx = v2.x + (v2.w - bw) / 2, by = v2.y + v2.h - bh - 5;
+    el("rect", { x: bx, y: by, width: bw, height: bh, rx: 4, fill: "var(--series-2)",
+                 opacity: 0.35, stroke: "var(--series-2)", "stroke-width": 1.2 }, schem);
+    for (const k of [-1, 0, 1]) {
+      const sx = bx + bw/2 + k * bw/3.2;
+      el("path", { d: `M ${sx} ${by-3} c 3 -4 -3 -8 0 -12`, fill: "none",
+                   stroke: "var(--series-2)", "stroke-width": 1.4, opacity: 0.6, "stroke-linecap": "round" }, schem);
+    }
+    const al = el("text", { x: v2.x + v2.w/2, y: by - 18, "text-anchor": "middle",
+                            "font-size": 10, fill: "var(--muted)" }, schem);
+    al.textContent = "adhesive · 85 °C";
+    const w1t = el("text", { x: v1.x + v1.w/2, y: v1.y - 28, "text-anchor": "middle",
+                             "font-size": 11, fill: "var(--text-2)", id: "p1wt" }, schem);
+    w1t.textContent = "";
+    const w2t = el("text", { x: v2.x + v2.w/2, y: v2.y - 28, "text-anchor": "middle",
+                             "font-size": 11, fill: "var(--text-2)", id: "p2wt" }, schem);
+    w2t.textContent = "";
+  }
+}
+function updateSchemLive(P1, P2, W1, W2) {
+  const t1 = document.getElementById("p1val"), t2 = document.getElementById("p2val");
+  if (t1) t1.textContent = fmtP(P1);
+  if (t2) t2.textContent = fmtP(P2);
+  const w1t = document.getElementById("p1wt"), w2t = document.getElementById("p2wt");
+  if (w1t) w1t.textContent = "RGA H₂O " + fmtP(W1) + " Torr";
+  if (w2t) w2t.textContent = "H₂O " + fmtP(W2) + " Torr";
+  /* λ scale bar in its own strip at the bottom of the schematic, same px-per-cm
+     scale as the drawn tube; the "bore" tick marks the tube diameter for comparison */
+  const g = document.getElementById("mfpbar");
+  if (!g || !geo) return;
+  g.innerHTML = "";
+  const lam = mfp(0.5*(P1+P2));
+  const x0 = 230, xMax = 730, y = 288;
+  const borePx = Math.max(geo.tube.h, 2);
+  const px = Math.max(2, Math.min(lam * geo.k, xMax - x0));
+  const clamped = lam * geo.k > xMax - x0;
+  el("line", { x1: x0, y1: y, x2: x0+px, y2: y, stroke: "var(--series-2)", "stroke-width": 2 }, g);
+  el("line", { x1: x0, y1: y-4, x2: x0, y2: y+4, stroke: "var(--series-2)", "stroke-width": 2 }, g);
+  el("line", { x1: x0+px, y1: y-4, x2: x0+px, y2: y+4, stroke: "var(--series-2)", "stroke-width": 2 }, g);
+  el("line", { x1: x0+borePx, y1: y-6, x2: x0+borePx, y2: y+6, stroke: "var(--baseline)", "stroke-width": 1.5 }, g);
+  const bt = el("text", { x: x0+borePx, y: y-9, "text-anchor": "middle", "font-size": 9.5, fill: "var(--muted)" }, g);
+  bt.textContent = "bore ⌀";
+  const t = el("text", { x: x0-10, y: y+3.5, "text-anchor": "end", "font-size": 11, fill: "var(--text-2)" }, g);
+  t.textContent = "mean free path λ = " + fmtLen(lam) + (clamped ? " (clamped)" : "");
+}
+
+/* ---------------- particle animation (cosmetic) ---------------- */
+const canvas = document.getElementById("parts");
+const ctx = canvas.getContext("2d");
+let particles = [];
+function fitCanvas() {
+  const w = canvas.clientWidth, h = canvas.clientHeight, dpr = window.devicePixelRatio || 1;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  ctx.setTransform(w * dpr / 760, 0, 0, w * dpr / 760, 0, 0); // canvas coords = svg viewBox coords
+}
+window.addEventListener("resize", fitCanvas);
+const inRect = (r, x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+function regionOf(x, y) {
+  if (!geo) return null;
+  if (inRect(geo.v1, x, y)) return "v1";
+  if (inRect(geo.tube, x, y)) return "tube";
+  if (inRect(geo.v2, x, y)) return "v2";
+  return null;
+}
+function densityOf(P) { return Math.max(0, Math.min(1, (Math.log10(Math.max(P, 1e-9)) + 9) / 12)); }
+function stepParticles(dtf, P1, P2) {
+  if (!geo) return;
+  const Pt = 0.5 * (P1 + P2);
+  const Kn = knudsen(Pt, state.d);
+  const drift = Math.max(0, Math.min(0.8, 1 / (1 + Kn * 8)));  // coherent-flow weight
+  const jl = Math.max(3, Math.min(mfp(Pt) * geo.k, 90));       // px between "collisions"
+  const regions = {
+    v1:   { r: geo.v1,   P: P1 },
+    tube: { r: geo.tube, P: Pt },
+    v2:   { r: geo.v2,   P: P2 },
+  };
+  /* reconcile counts toward pressure-derived targets */
+  const counts = { v1: 0, tube: 0, v2: 0 };
+  for (const p of particles) counts[p.reg] = (counts[p.reg] || 0) + 1;
+  for (const key in regions) {
+    const { r, P } = regions[key];
+    const target = Math.round((r.w * r.h) / 340 * densityOf(P));
+    let diff = target - (counts[key] || 0);
+    let n = 0;
+    while (diff > 0 && n < 4) {
+      particles.push({ x: r.x + Math.random()*r.w, y: r.y + Math.random()*r.h,
+                       a: Math.random()*Math.PI*2, seg: Math.random()*jl, reg: key });
+      diff--; n++;
+    }
+    while (diff < 0 && n < 4) {
+      const idx = particles.findIndex(p => p.reg === key);
+      if (idx < 0) break;
+      particles.splice(idx, 1); diff++; n++;
+    }
+  }
+  /* move */
+  const v = 65;
+  const alive = [];
+  for (const p of particles) {
+    p.seg -= v * dtf;
+    if (p.seg <= 0) {
+      p.seg = jl * (0.5 + Math.random());
+      let a = Math.random() * Math.PI * 2;
+      if (drift > 0.02) {
+        /* bias direction toward the pump (leftward / toward tube mouth) in viscous flow */
+        let dx = Math.cos(a) - drift * 1.3, dy = Math.sin(a);
+        if (p.reg === "v2") {
+          const mx = geo.tube.x + geo.tube.w, my = geo.cy;
+          const ang = Math.atan2(my - p.y, mx - p.x);
+          dx = Math.cos(a) + drift * 1.3 * Math.cos(ang);
+          dy = Math.sin(a) + drift * 1.3 * Math.sin(ang);
+        }
+        a = Math.atan2(dy, dx);
+      }
+      p.a = a;
+    }
+    let nx = p.x + Math.cos(p.a) * v * dtf;
+    let ny = p.y + Math.sin(p.a) * v * dtf;
+    /* capture at the pump-side wall of the manifold */
+    if (p.reg === "v1" && nx <= geo.v1.x + 1) continue;
+    let reg = regionOf(nx, ny);
+    if (!reg) {
+      if (regionOf(p.x, ny)) { p.a = Math.PI - p.a; nx = p.x; reg = regionOf(nx, ny); }
+      else if (regionOf(nx, p.y)) { p.a = -p.a; ny = p.y; reg = regionOf(nx, ny); }
+      else { p.a += Math.PI; nx = p.x; ny = p.y; reg = p.reg; }
+    }
+    p.x = nx; p.y = ny; p.reg = reg || p.reg;
+    alive.push(p);
+  }
+  particles = alive;
+  /* draw */
+  ctx.clearRect(0, 0, 760, 300);
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches ||
+               document.documentElement.dataset.theme === "dark";
+  ctx.fillStyle = dark ? "rgba(255,255,255,0.72)" : "rgba(11,11,11,0.55)";
+  for (const p of particles) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.7, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+/* ---------------- playback + recompute ---------------- */
+let sim = null, ideal = null, u = 0, playing = false, lastFrame = null;
+const playBtn = document.getElementById("play");
+const scrub = document.getElementById("scrub");
+
+function playT0() { return Math.max(1e-4, sim.tEnd * 1e-7); }
+function playTime() { return playT0() * Math.pow(sim.tEnd / playT0(), u); }
+
+/* labeled log-time ruler under the scrubber, matching the chart's time axis */
+const RULER_ANCHORS = [
+  [1e-4, "0.1 ms"], [1e-3, "1 ms"], [1e-2, "10 ms"], [0.1, "0.1 s"], [1, "1 s"],
+  [10, "10 s"], [60, "1 min"], [600, "10 min"], [3600, "1 h"], [36000, "10 h"],
+  [86400, "1 d"], [864000, "10 d"], [8.64e6, "100 d"],
+];
+function buildRuler() {
+  const r = document.getElementById("ruler");
+  r.innerHTML = "";
+  const t0 = playT0(), t1 = sim.tEnd;
+  let lastPct = -100;
+  for (const [t, lab] of RULER_ANCHORS) {
+    if (t < t0 * 1.02 || t > t1) continue;
+    const pct = 100 * Math.log(t / t0) / Math.log(t1 / t0);
+    const tk = document.createElement("div");
+    tk.className = "tk"; tk.style.left = pct + "%"; r.appendChild(tk);
+    if (pct - lastPct > 9) {
+      const tl = document.createElement("div");
+      tl.className = "tl"; tl.style.left = pct + "%"; tl.textContent = lab;
+      r.appendChild(tl);
+      lastPct = pct;
+    }
+  }
+}
+
+function recompute() {
+  sim = simulate(state);
+  const Vtot = state.V1 + state.V2;
+  const tIdeal = t => PU + (state.P0 - PU) * Math.exp(-state.S * t / Vtot) +
+                      (state.og ? Qog(t) / state.S : 0);   // quasi-static outgassing floor Q/S
+  ideal = { X: sim.T, Y: sim.T.map(tIdeal) };
+
+  const Cm = condMol(state.d, state.L);
+  const SeffFloor = 1 / (1/state.S + 1/Cm);
+  const tBn = timeToReach(sim.T, sim.P2, TARGET);
+  const tId = state.og ? timeToReach(ideal.X, ideal.Y, TARGET)
+                       : (Vtot / state.S) * Math.log((state.P0 - PU) / (TARGET - PU));
+  document.getElementById("tileT").textContent = fmtTime(tBn);
+  document.getElementById("tileTnote").textContent =
+    tBn ? "S_eff at base ≈ " + fmtS(SeffFloor) + " L/s of " + fmtS(state.S) + " available" : "did not reach target";
+  document.getElementById("tileTi").textContent = fmtTime(tId);
+  document.getElementById("tileSlow").textContent =
+    (tBn && tId > 0) ? "×" + (tBn/tId >= 100 ? Math.round(tBn/tId).toLocaleString() : (tBn/tId).toPrecision(2)) : "–";
+  document.getElementById("tileC").textContent = fmtS(Cm) + " L/s";
+  document.getElementById("tileCnote").textContent =
+    "vs " + fmtS(condVis(state.d, state.L, state.P0)) + " L/s viscous at start";
+  for (const id of ["rgaRow1", "rgaRow2", "rgaNote"])
+    document.getElementById(id).style.display = state.og ? "" : "none";
+  if (state.og) {
+    const n = sim.T.length - 1;
+    const att = sim.W2[n] / Math.max(sim.W1[n], 1e-30);
+    document.getElementById("tileRga").textContent = fmtP(sim.W1[n]) + " Torr";
+    document.getElementById("tileAtt").textContent =
+      "×" + (att >= 100 ? Math.round(att).toLocaleString() : att.toPrecision(2));
+  }
+
+  /* chart 1: pressure vs time */
+  const pV = LAM / (0.01 * state.d), pM = LAM / (0.5 * state.d);    // Kn = 0.01 / 0.5 boundaries
+  const x0 = playT0(), x1 = sim.tEnd * 1.2;
+  const s1 = [
+    { name: "chamber P₂" + (state.og ? " total" : ""), color: "var(--series-1)", X: sim.T, Y: sim.P2 },
+    { name: "pump side P₁" + (state.og ? " total" : ""), color: "var(--series-2)", X: sim.T, Y: sim.P1 },
+  ];
+  if (state.og) s1.push(
+    { name: "chamber H₂O", color: "var(--series-1)", dash: "2 3", X: sim.T, Y: sim.W2 },
+    { name: "H₂O at RGA (manifold)", color: "var(--series-2)", dash: "2 3", X: sim.T, Y: sim.W1 });
+  s1.push({ name: "no bottleneck (ideal)", color: "var(--series-3)", dash: "6 5", X: ideal.X, Y: ideal.Y });
+  c1.draw({
+    x0, x1, y0: 6e-10, y1: state.P0 * 3,
+    bands: [
+      { lo: pV, hi: 1e9, label: "viscous — conductance ∝ P", wash: false },
+      { lo: pM, hi: pV, label: "transitional", wash: true },
+      { lo: 0,  hi: pM, label: "molecular — conductance fixed", wash: false },
+    ],
+    series: s1,
+    labels: (() => {
+      const tMid = Math.sqrt(x0 * x1);
+      const yI = interpLog(ideal.X, ideal.Y, tMid);
+      return yI > 6e-10 && yI < state.P0
+        ? [{ x: tMid, y: yI, dy: -6, text: "ideal", anchor: "middle" }] : [];
+    })(),
+  });
+  c1.setLegend(s1.map(s => ({ name: s.name, color: s.color, dash: s.dash })));
+
+  /* chart 2: delivered speed vs pressure */
+  const Pg = [], Cg = [], Sg = [], Eg = [];
+  for (let i = 0; i <= 220; i++) {
+    const P = 10 ** (-9 + i / 220 * (Math.log10(state.P0) + 9));
+    const C = cond(state.d, state.L, P);
+    Pg.push(P); Cg.push(C); Sg.push(state.S); Eg.push(1 / (1/state.S + 1/C));
+  }
+  const yMin = Math.max(1e-3, SeffFloor / 8);
+  c2.draw({
+    x0: 1e-9, x1: state.P0, y0: yMin, y1: Math.max(state.S, Cm) * 40,
+    bands: [
+      { lo: pV, hi: 1e9, label: "viscous", wash: false },
+      { lo: pM, hi: pV, label: "transitional", wash: true },
+      { lo: 0,  hi: pM, label: "molecular", wash: false },
+    ],
+    series: [
+      { name: "tube conductance C", color: "var(--series-2)", X: Pg, Y: Cg },
+      { name: "pump speed S", color: "var(--muted)", dash: "6 5", X: Pg, Y: Sg },
+      { name: "delivered to chamber S_eff", color: "var(--series-1)", X: Pg, Y: Eg },
+    ],
+    labels: [
+      { x: 3e-9, y: SeffFloor, dy: -7, text: "conductance-limited floor ≈ " + fmtS(SeffFloor) + " L/s" },
+      { x: 3e-9, y: state.S, dy: -7, text: "S" },
+    ],
+  });
+  c2.setLegend([
+    { name: "tube conductance C", color: "var(--series-2)" },
+    { name: "pump speed S", color: "var(--muted)", dash: "5 4" },
+    { name: "delivered speed S_eff", color: "var(--series-1)" },
+  ]);
+
+  drawSchem(state);
+  buildRuler();
+  fitCanvas();
+  particles = [];
+  tick(true);
+}
+
+function tick(force) {
+  if (!sim) return;
+  const t = playTime();
+  const P1 = interpLog(sim.T, sim.P1, t), P2 = interpLog(sim.T, sim.P2, t);
+  document.getElementById("tOut").textContent = fmtTime(t);
+  /* instantaneous time compression of the log sweep: d(sim t)/d(wall t) */
+  const spd = t * Math.log(sim.tEnd / playT0()) / 28;
+  document.getElementById("spdOut").textContent =
+    "×" + (spd >= 100 ? Math.round(spd).toLocaleString() : spd.toPrecision(2));
+  const Kn = knudsen(0.5*(P1+P2), state.d);
+  document.getElementById("regOut").textContent = regime(Kn) + " (Kn " + (Kn >= 100 ? "≫1" : Kn.toPrecision(2)) + ")";
+  document.getElementById("mfpOut").textContent = fmtLen(mfp(0.5*(P1+P2)));
+  document.getElementById("dOut").textContent = fmtLen(state.d);
+  scrub.value = Math.round(u * 1000);
+  const W1 = state.og ? interpLog(sim.T, sim.W1, t) : 0;
+  const W2 = state.og ? interpLog(sim.T, sim.W2, t) : 0;
+  updateSchemLive(P1, P2, W1, W2);
+  c1.setCursor(t, 0);
+  if (force) stepParticles(0.016, P1, P2);
+}
+
+function frame(ts) {
+  const dtf = lastFrame ? Math.min((ts - lastFrame) / 1000, 0.05) : 0.016;
+  lastFrame = ts;
+  if (playing) {
+    u += dtf / 28;                       // full log-time sweep in ~28 s
+    if (u >= 1) { u = 1; playing = false; playBtn.textContent = "Replay"; }
+    tick();
+  }
+  const t = playTime();
+  stepParticles(dtf, interpLog(sim.T, sim.P1, t), interpLog(sim.T, sim.P2, t));
+  requestAnimationFrame(frame);
+}
+
+playBtn.addEventListener("click", () => {
+  if (u >= 1) u = 0;
+  playing = !playing;
+  playBtn.textContent = playing ? "Pause" : (u > 0 ? "Resume" : "Play");
+  if (playing && u === 0) tick();
+});
+scrub.addEventListener("input", () => { u = scrub.value / 1000; playing = false; playBtn.textContent = u >= 1 ? "Replay" : "Play"; tick(); });
+
+recompute();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

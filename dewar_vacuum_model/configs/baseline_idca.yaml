@@ -1,0 +1,73 @@
+# ============================================================================
+# Baseline tactical IDCA-class dewar — REPRESENTATIVE values, edit to match
+# your hardware. Units are stated on every key.
+# ============================================================================
+
+# ---- geometry & environment -------------------------------------------------
+shell_temp_K: 293.0          # vacuum shell / ambient
+cold_temp_K: 80.0            # focal-plane setpoint
+cold_area_cm2: 40.0          # cold shield + cold finger lateral area (gas & radiation)
+gap_mm: 5.0                  # shell-to-shield gap (sets continuum plateau & Kn)
+steel_area_cm2: 300.0        # internal wetted metal area (H2, CH4, surface water)
+free_volume_L: 0.10          # internal free volume
+p_crit_torr: 1.0e-3          # end-of-life warm pressure criterion
+
+# ---- surface water (Redhead multi-energy desorption) ------------------------
+surface_water:
+  monolayers: 3.0            # monolayer-equivalents after air exposure (1-10 typical)
+  # area_cm2: 300.0          # defaults to steel_area_cm2
+  E_lo_eV: 0.75              # binding-energy window on oxidized metal
+  E_hi_eV: 1.15
+  nu_hz: 1.0e+13             # attempt frequency
+
+# ---- adhesives / organics: THE knobs you asked for --------------------------
+# Each entry is a Fickian reservoir. The controlling depth is
+#     L_eff = volume_cm3 / exposed_area_cm2
+# (slab drying through its exposed face; a buried bond line venting only at its
+# perimeter should be entered with the SMALL perimeter area -> large L_eff).
+adhesives:
+  - name: fpa_bond_lines           # die-attach / hybrid bond fillets
+    volume_cm3: 0.05
+    exposed_area_cm2: 2.0          # -> L_eff = 0.25 mm
+    density_g_cm3: 1.15
+    water_wt_pct: 1.0              # equilibrium moisture at ~50 % RH
+    D_295K_cm2_s: 2.0e-9           # water diffusivity in epoxy at 295 K
+    E_a_eV: 0.45                   # diffusion activation energy
+  - name: potting_and_pwb          # potting, wire staking, board laminate
+    volume_cm3: 0.20
+    exposed_area_cm2: 2.0          # -> L_eff = 1.0 mm (slow reservoir)
+    density_g_cm3: 1.15
+    water_wt_pct: 1.0
+    D_295K_cm2_s: 2.0e-9
+    E_a_eV: 0.45
+
+# ---- fixed gas emitters (per cm^2 of steel) ---------------------------------
+fixed_gases:
+  q_h2_torrL_s_cm2: 1.0e-12   # baked 304-class steel (band 1e-13 .. 3e-12)
+  q_ch4_torrL_s_cm2: 1.0e-15  # non-getterable; sets gettered-life ceiling
+
+# ---- getter (non-evaporable, Zr-V-Fe class) ---------------------------------
+getter:
+  enabled: true
+  capacity_torrL: 2.0         # reserved water/H2/CO capacity (St 707: ~2.4 torr·L/g
+                              # for water surface-limited; H2 bulk far larger)
+  p_floor_torr: 1.0e-7        # equilibrium pressure while getter is healthy
+
+# ---- cryocooler net-refrigeration curve (linear between anchors) ------------
+cooler:
+  q_lift_80K_W: 0.6           # net lift at 80 K cold tip, 23 C reject
+  q_lift_300K_W: 3.0          # net lift near ambient cold tip
+
+# ---- cold-space thermal budget ----------------------------------------------
+thermal:
+  m_cu_g: 15.0                # EFFECTIVE copper mass of the cold space
+                              # (shield + platform + FPA + filter; convert other
+                              #  materials by cp ratio near 150 K)
+  eps_eff: 0.03               # effective emissivity, shell<->shield (low-e plating)
+  g_leads_W_K: 0.7e-3         # leads + support conduction, linearized
+
+# ---- bake study grids ---------------------------------------------------------
+bake:
+  temps_C: [60, 85, 100, 125]
+  durations_days: [1, 3, 7, 14]
+  storage_temp_C: 22.0
