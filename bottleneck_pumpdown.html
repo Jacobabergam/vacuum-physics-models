@@ -65,12 +65,15 @@
   .schemwrap { position: relative; }
   .schemwrap svg { display: block; width: 100%; height: auto; }
   .schemwrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-  .playbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  /* scrubber gets its own full-width row; button + readout pills sit below it,
+     so nothing they do can change the bar's width */
+  .playbar { display: grid; gap: 8px; margin-top: 6px; }
   .playbar button {
     background: var(--series-1); border: none; color: #fff; font: inherit; font-weight: 600;
-    border-radius: 7px; padding: 6px 16px; cursor: pointer; min-width: 84px;
+    border-radius: 7px; padding: 6px 8px; cursor: pointer; width: 96px; flex: none;
   }
-  .playbar .scrubwrap { flex: 1; min-width: 160px; }
+  .playbar .scrubwrap { width: 100%; min-width: 0; }
+  .playbar .chips { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .scrubwrap input[type=range] { width: 100%; accent-color: var(--series-1); display: block; }
   .ruler { position: relative; height: 16px; margin: 0 7px; }
   .ruler .tk { position: absolute; top: 0; width: 1px; height: 4px; background: var(--baseline); }
@@ -80,7 +83,12 @@
     border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px;
     color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 13px;
   }
-  .chip b { color: var(--text-1); font-weight: 600; }
+  .chip b { color: var(--text-1); font-weight: 600; display: inline-block; }
+  /* reserve worst-case room for each live readout so the pills hold their size */
+  #tOut { min-width: 7.5ch; }
+  #spdOut { min-width: 6ch; }
+  #regOut { min-width: 17ch; }
+  #mfpOut, #dOut { min-width: 6.5ch; }
 
   /* sidebar toolbar */
   .sidebar { position: sticky; top: 12px; display: grid; gap: 14px; }
@@ -158,15 +166,17 @@
         <canvas id="parts"></canvas>
       </div>
       <div class="playbar">
-        <button id="play">Play</button>
         <div class="scrubwrap">
           <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="playback time (log scale)">
           <div class="ruler" id="ruler"></div>
         </div>
-        <span class="chip">t = <b id="tOut">0 s</b></span>
-        <span class="chip">playback <b id="spdOut">–</b></span>
-        <span class="chip">regime: <b id="regOut">–</b></span>
-        <span class="chip">mean free path <b id="mfpOut">–</b> vs bore <b id="dOut">–</b></span>
+        <div class="chips">
+          <button id="play">Play</button>
+          <span class="chip">t = <b id="tOut">0 s</b></span>
+          <span class="chip">playback <b id="spdOut">–</b></span>
+          <span class="chip">regime: <b id="regOut">–</b></span>
+          <span class="chip">mean free path <b id="mfpOut">–</b> vs bore <b id="dOut">–</b></span>
+        </div>
       </div>
 
       <div class="sect">
