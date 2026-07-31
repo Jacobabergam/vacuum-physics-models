@@ -1,3 +1,8 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# Claude Code session worktrees live here; the launch config next to them is
+# tracked on purpose, so every worktree gets the dev server config.
+.claude/*
+!.claude/launch.json
