@@ -20,6 +20,11 @@ PU = 1e-9        # turbopump ultimate pressure, Torr
 LAM = 5.0e-3     # mean-free-path * pressure, cm*Torr (air, 20 C)
 TARGET = 1e-6    # target pressure for the timing readout, Torr
 
+# Fixed timeline: every run spans the same 0.1 ms -> 20 days window so the time
+# axis never rescales when parameters change.
+T_START = 1e-4
+T_END = 20 * 86400
+
 
 def mfp(P):
     return LAM / P                                    # cm
@@ -130,8 +135,7 @@ def simulate(P0, St, d, L, V1, V2, og=False, ogA=OG_A0, ogV=OG_V0, lk=False, Ql=
 
     rec()
     last_rec, steps = 0.0, 0
-    t_max = 1e7 if og else (1e5 if lk else 1e9)   # og ~116 d; leak-only 1e5 s (steady floor)
-    while P2a + P2w > 2e-9 and t < t_max and steps < 60000:
+    while P2a + P2w > 2e-9 and t < T_END and steps < 60000:
         steps += 1
         cv = cond_vis(d, L, 0.5 * ((P1a + P1w) + (P2a + P2w)))
         cm = cond_mol(d, L)
@@ -153,6 +157,13 @@ def simulate(P0, St, d, L, V1, V2, og=False, ogA=OG_A0, ogV=OG_V0, lk=False, Ql=
             last_rec = t
         dt = min(dt * 1.2, 0.02 * t + 1e-7)
     rec()
+    # Land the curve exactly on the window edge: hold the last state out to 20 days
+    # if the run bottomed out at the ultimate early, else trim the final overshoot.
+    if t < T_END:
+        t = T_END
+        rec()
+    else:
+        T[-1] = T_END
     return T, A1, A2, W1, W2
 
 
@@ -295,7 +306,7 @@ def interactive():
             l_w2.set_data(T, W2); l_w1.set_data(T, W1)
         else:
             l_w2.set_data([], []); l_w1.set_data([], [])
-        ax1.set_xlim(max(1e-4, T[-1] * 1e-7), T[-1] * 1.2)
+        ax1.set_xlim(T_START, T_END)
         ax1.set_ylim(6e-10, P0 * 3)
 
         Pg = [10 ** (-9 + i / 220 * (math.log10(P0) + 9)) for i in range(221)]
