@@ -65,20 +65,28 @@
   .schemwrap { position: relative; }
   .schemwrap svg { display: block; width: 100%; height: auto; }
   .schemwrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-  .playbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  /* transport: the time bar spans the whole panel, readouts sit below it */
+  .playbar { display: grid; gap: 10px; margin-top: 8px; }
   .playbar button {
     background: var(--series-1); border: none; color: #fff; font: inherit; font-weight: 600;
-    border-radius: 7px; padding: 6px 16px; cursor: pointer; min-width: 84px;
+    border-radius: 7px; padding: 6px 16px; cursor: pointer; flex: 0 0 92px;
   }
-  .playbar .scrubwrap { flex: 1; min-width: 160px; }
+  .playbar .scrubwrap { width: 100%; }
   .scrubwrap input[type=range] { width: 100%; accent-color: var(--series-1); display: block; }
+  .playctl { display: flex; gap: 10px; align-items: stretch; }
+  /* equal-width readouts so nothing reflows as the numbers change */
+  .chips { flex: 1; min-width: 0; display: grid; gap: 8px;
+           grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); }
   .ruler { position: relative; height: 16px; margin: 0 7px; }
   .ruler .tk { position: absolute; top: 0; width: 1px; height: 4px; background: var(--baseline); }
   .ruler .tl { position: absolute; top: 4px; transform: translateX(-50%); font-size: 10px;
                color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .ruler .tl.end { transform: translateX(-100%); }   /* keep the 20 d end label on-screen */
   .chip {
-    border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px;
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px;
     color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    min-width: 0; overflow: hidden; text-overflow: ellipsis;
   }
   .chip b { color: var(--text-1); font-weight: 600; }
 
@@ -113,7 +121,9 @@
   .res-note { color: var(--muted); font-size: 11.5px; margin-top: -4px; padding-bottom: 6px; }
 
   /* charts */
-  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  /* one chart per row: the time axis is a fixed 10-decade span, so the curves need
+     the full card width to keep the early pumpdown legible */
+  .charts { display: grid; grid-template-columns: 1fr; gap: 22px; }
   .chart { position: relative; }
   .chart svg { display: block; width: 100%; height: auto; }
   .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; color: var(--text-2); font-size: 12.5px; }
@@ -158,15 +168,19 @@
         <canvas id="parts"></canvas>
       </div>
       <div class="playbar">
-        <button id="play">Play</button>
         <div class="scrubwrap">
           <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="playback time (log scale)">
           <div class="ruler" id="ruler"></div>
         </div>
-        <span class="chip">t = <b id="tOut">0 s</b></span>
-        <span class="chip">playback <b id="spdOut">–</b></span>
-        <span class="chip">regime: <b id="regOut">–</b></span>
-        <span class="chip">mean free path <b id="mfpOut">–</b> vs bore <b id="dOut">–</b></span>
+        <div class="playctl">
+          <button id="play">Play</button>
+          <div class="chips">
+            <span class="chip">t = <b id="tOut">0 s</b></span>
+            <span class="chip">playback <b id="spdOut">–</b></span>
+            <span class="chip">regime: <b id="regOut">–</b></span>
+            <span class="chip">mean free path <b id="mfpOut">–</b> vs bore <b id="dOut">–</b></span>
+          </div>
+        </div>
       </div>
 
       <div class="sect">
@@ -243,6 +257,10 @@
 const PU = 1e-9;          // turbopump ultimate pressure, Torr
 const LAM = 5.0e-3;       // lambda*P, cm*Torr
 const TARGET = 1e-6;      // target pressure for the results panel, Torr
+/* fixed timeline: every run spans the same 0.1 ms -> 20 days window so the axis
+   and the scrubber never rescale when parameters change */
+const T_START = 1e-4;             // s, left edge of the time axis / scrubber
+const T_END   = 20 * 86400;       // s, 20 days
 const FW = Math.sqrt(29 / 18);   // molecular-speed factor for H2O vs air (v ~ 1/sqrt(M))
 const OG_A = 20, OG_Q1H = 5e-5;  // adhesive area cm^2; H2O outgassing rate at 85 C, 1 h, Torr*L/s/cm^2
 const Qog = t => OG_A * OG_Q1H * 3600 / Math.max(t, 60);  // total H2O throughput, ~1/t desorption decay
@@ -274,8 +292,7 @@ function simulate(p) {
     W1.push(Math.max(P1w, 1e-12)); W2.push(Math.max(P2w, 1e-12));
   };
   rec();
-  const tMax = p.og ? 1e6 : 1e9;   // with 1/t outgassing the decay never ends; cap at ~11 days
-  while (P2a + P2w > 2e-9 && t < tMax && steps < 60000) {
+  while (P2a + P2w > 2e-9 && t < T_END && steps < 60000) {
     steps++;
     const Cv = condVis(p.d, p.L, 0.5 * ((P1a + P1w) + (P2a + P2w)));  // viscous term uses mean total pressure
     const Cm = condMol(p.d, p.L);
@@ -291,7 +308,11 @@ function simulate(p) {
     dt = Math.min(dt * 1.2, 0.02*t + 1e-7);
   }
   rec();
-  return { T, P1: A1, P2: A2, W1, W2, tEnd: Math.max(t, 1e-6) };
+  /* land the curve exactly on the window edge: hold the last state out to 20 days if the
+     run bottomed out at the ultimate early, otherwise trim the final step's overshoot */
+  if (t < T_END) { t = T_END; rec(); }
+  else T[T.length - 1] = T_END;
+  return { T, P1: A1, P2: A2, W1, W2 };
 }
 
 /* log-log interpolation of Y(x) on ascending X */
@@ -415,7 +436,7 @@ function el(tag, attrs, parent) {
 /* ---------------- log-log chart ---------------- */
 function makeChart(rootId, legId, cfg) {
   const root = document.getElementById(rootId);
-  const W = 500, H = 330, mL = 52, mR = 14, mT = 12, mB = 44;
+  const W = cfg.W || 1000, H = cfg.H || 430, mL = 56, mR = 16, mT = 14, mB = 46;
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, root);
   const clipId = rootId + "_clip";
   const defs = el("defs", {}, svg);
@@ -462,8 +483,10 @@ function makeChart(rootId, legId, cfg) {
     }
     /* grid + ticks */
     const xd = decades(M.x0, M.x1), yd = decades(M.y0, M.y1);
-    const xStep = xd.length > 14 ? 3 : xd.length > 8 ? 2 : 1;
-    const yStep = yd.length > 14 ? 3 : yd.length > 8 ? 2 : 1;
+    /* label every nth decade, chosen so labels keep a legible pixel gap */
+    const step = (n, px, min) => Math.max(1, Math.ceil(min / (px / Math.max(n, 1))));
+    const xStep = step(xd.length, W-mL-mR, 46);
+    const yStep = step(yd.length, H-mT-mB, 26);
     for (const e of xd) {
       const x = xPix(10**e);
       el("line", { x1:x, y1:mT, x2:x, y2:H-mB, stroke:"var(--grid)", "stroke-width":1 }, gGrid);
@@ -567,10 +590,12 @@ function makeChart(rootId, legId, cfg) {
 }
 
 const c1 = makeChart("chart1", "leg1", {
-  xLabel: "time (s)", yLabel: "pressure (Torr)", bandAxis: "y",
+  W: 1000, H: 460,
+  xLabel: "time (s) — fixed 0.1 ms to 20 days", yLabel: "pressure (Torr)", bandAxis: "y",
   xTip: x => "t = " + fmtTime(x), yTip: y => fmtP(y) + " Torr",
 });
 const c2 = makeChart("chart2", "leg2", {
+  W: 1000, H: 400,
   xLabel: "chamber pressure (Torr) — pumpdown proceeds ⟵", yLabel: "speed / conductance (L/s)", bandAxis: "x",
   xTip: x => "P = " + fmtP(x) + " Torr", yTip: y => fmtS(y) + " L/s",
 });
@@ -699,7 +724,7 @@ function fitCanvas() {
   canvas.width = w * dpr; canvas.height = h * dpr;
   ctx.setTransform(w * dpr / 760, 0, 0, w * dpr / 760, 0, 0); // canvas coords = svg viewBox coords
 }
-window.addEventListener("resize", fitCanvas);
+window.addEventListener("resize", () => { fitCanvas(); if (sim) buildRuler(); });
 const inRect = (r, x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 function regionOf(x, y) {
   if (!geo) return null;
@@ -791,31 +816,37 @@ let sim = null, ideal = null, u = 0, playing = false, lastFrame = null;
 const playBtn = document.getElementById("play");
 const scrub = document.getElementById("scrub");
 
-function playT0() { return Math.max(1e-4, sim.tEnd * 1e-7); }
-function playTime() { return playT0() * Math.pow(sim.tEnd / playT0(), u); }
+function playTime() { return T_START * Math.pow(T_END / T_START, u); }
 
 /* labeled log-time ruler under the scrubber, matching the chart's time axis */
 const RULER_ANCHORS = [
   [1e-4, "0.1 ms"], [1e-3, "1 ms"], [1e-2, "10 ms"], [0.1, "0.1 s"], [1, "1 s"],
   [10, "10 s"], [60, "1 min"], [600, "10 min"], [3600, "1 h"], [36000, "10 h"],
-  [86400, "1 d"], [864000, "10 d"], [8.64e6, "100 d"],
+  [86400, "1 d"], [864000, "10 d"], [T_END, "20 d"],
 ];
 function buildRuler() {
   const r = document.getElementById("ruler");
   r.innerHTML = "";
-  const t0 = playT0(), t1 = sim.tEnd;
-  let lastPct = -100;
+  const t0 = T_START, t1 = T_END;
+  /* thin the labels by pixels, not percent, so a narrow scrubber doesn't overlap them */
+  const minGap = 100 * 44 / Math.max(r.clientWidth || 320, 120);
+  let lastPct = -100, lastLabel = null;
   for (const [t, lab] of RULER_ANCHORS) {
     if (t < t0 * 1.02 || t > t1) continue;
     const pct = 100 * Math.log(t / t0) / Math.log(t1 / t0);
     const tk = document.createElement("div");
     tk.className = "tk"; tk.style.left = pct + "%"; r.appendChild(tk);
-    if (pct - lastPct > 9) {
-      const tl = document.createElement("div");
-      tl.className = "tl"; tl.style.left = pct + "%"; tl.textContent = lab;
-      r.appendChild(tl);
-      lastPct = pct;
+    /* always label the 20 d end so the fixed span is readable off the ruler */
+    const isEnd = t === t1;
+    if (pct - lastPct <= minGap) {
+      if (!isEnd) continue;
+      lastLabel?.remove();          // the end label wins a collision
     }
+    const tl = document.createElement("div");
+    tl.className = "tl" + (isEnd ? " end" : "");
+    tl.style.left = pct + "%"; tl.textContent = lab;
+    r.appendChild(tl);
+    lastPct = pct; lastLabel = tl;
   }
 }
 
@@ -852,7 +883,7 @@ function recompute() {
 
   /* chart 1: pressure vs time */
   const pV = LAM / (0.01 * state.d), pM = LAM / (0.5 * state.d);    // Kn = 0.01 / 0.5 boundaries
-  const x0 = playT0(), x1 = sim.tEnd * 1.2;
+  const x0 = T_START, x1 = T_END;
   const s1 = [
     { name: "chamber P₂" + (state.og ? " total" : ""), color: "var(--series-1)", X: sim.T, Y: sim.P2 },
     { name: "pump side P₁" + (state.og ? " total" : ""), color: "var(--series-2)", X: sim.T, Y: sim.P1 },
@@ -922,7 +953,7 @@ function tick(force) {
   const P1 = interpLog(sim.T, sim.P1, t), P2 = interpLog(sim.T, sim.P2, t);
   document.getElementById("tOut").textContent = fmtTime(t);
   /* instantaneous time compression of the log sweep: d(sim t)/d(wall t) */
-  const spd = t * Math.log(sim.tEnd / playT0()) / 28;
+  const spd = t * Math.log(T_END / T_START) / 28;
   document.getElementById("spdOut").textContent =
     "×" + (spd >= 100 ? Math.round(spd).toLocaleString() : spd.toPrecision(2));
   const Kn = knudsen(0.5*(P1+P2), state.d);
