@@ -66,11 +66,17 @@
   .schemwrap svg { display: block; width: 100%; height: auto; }
   .schemwrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .playbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  /* Scrubber owns a full-width row (order -1 puts it first); its size is set by the card,
+     never by the readout chips — so the value->pixel mapping cannot shift mid-drag. */
+  .playbar .scrubwrap { flex: 0 0 100%; order: -1; min-width: 0; }
+  /* Pin readout minimum widths (tabular digits) so the chip row doesn't dance either. */
+  #tOut  { display: inline-block; min-width: 62px; }
+  #spdOut{ display: inline-block; min-width: 46px; }
+  #regOut{ display: inline-block; min-width: 158px; }
   .playbar button {
     background: var(--series-1); border: none; color: #fff; font: inherit; font-weight: 600;
     border-radius: 7px; padding: 6px 16px; cursor: pointer; min-width: 84px;
   }
-  .playbar .scrubwrap { flex: 1; min-width: 160px; }
   .scrubwrap input[type=range] { width: 100%; accent-color: var(--series-1); display: block; }
   .ruler { position: relative; height: 16px; margin: 0 7px; }
   .ruler .tk { position: absolute; top: 0; width: 1px; height: 4px; background: var(--baseline); }
@@ -137,6 +143,61 @@
   }
   .fine { color: var(--muted); font-size: 12px; max-width: 88ch; }
   text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+
+  /* ---------- documentation block (added 2026-07-30) ---------- */
+  .viz-root {
+    --doc-w:  #2a78d6; --doc-h2: #008300; --doc-ch4: #e87ba4;
+    --doc-he: #eda100; --doc-crit: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      --doc-w: #3987e5; --doc-ch4: #d55181; --doc-he: #c98500; --doc-crit: #e66767;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    --doc-w: #3987e5; --doc-ch4: #d55181; --doc-he: #c98500; --doc-crit: #e66767;
+  }
+  .doc h3 { font-size: 13.5px; font-weight: 650; margin: 2px 0 6px; }
+  .doc p { color: var(--text-2); max-width: 100ch; margin-bottom: 8px; }
+  .doc p b, .doc li b { color: var(--text-1); }
+  .doc .fine { font-size: 12px; color: var(--muted); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 4px 0 6px; font-size: 12.5px; color: var(--text-2); }
+  .legend svg { vertical-align: -2px; margin-right: 5px; }
+  .rrow { display: grid; grid-template-columns: 205px 1fr; gap: 10px; align-items: center; margin: 24px 0 10px; }
+  .rrow:last-child { margin-top: 6px; }
+  .rlab { font-size: 12.5px; color: var(--text-2); text-align: right; line-height: 1.25; }
+  .rlab b { color: var(--text-1); }
+  .rbar { position: relative; height: 26px; border-radius: 6px; overflow: visible; background: var(--band); }
+  .rseg { position: absolute; top: 0; bottom: 0; }
+  .rseg span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+               font-size: 11.5px; font-weight: 650; color: #fff; white-space: nowrap; overflow: hidden; }
+  .rband { position: absolute; top: -3px; bottom: -3px; border-left: 2px dashed var(--doc-crit);
+           border-right: 2px dashed var(--doc-crit); background: transparent; }
+  .rmark { position: absolute; top: -5px; bottom: -5px; width: 0; border-left: 2px solid var(--doc-crit); }
+  .rnote { position: absolute; top: -20px; transform: translateX(-50%); font-size: 11px;
+           color: var(--doc-crit); font-weight: 650; white-space: nowrap; }
+  .raxis { position: relative; height: 18px; margin-top: 2px; }
+  .raxis span { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .raxis span:first-child { transform: none; }
+  .raxis span:last-child { transform: translateX(-100%); }
+  .doctab { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+  .doctab th { text-align: left; color: var(--text-2); font-weight: 650; border-bottom: 1px solid var(--baseline);
+               padding: 5px 8px 5px 0; }
+  .doctab td { color: var(--text-2); border-bottom: 1px solid var(--grid); padding: 6px 8px 6px 0; vertical-align: top; }
+  .doctab td:first-child { color: var(--text-1); font-weight: 600; white-space: nowrap; }
+  .refs { columns: 2; column-gap: 26px; font-size: 12.5px; color: var(--text-2); padding-left: 18px; }
+  @media (max-width: 900px) { .refs { columns: 1; } }
+  .refs li { margin-bottom: 7px; break-inside: avoid; }
+  .refs a { color: var(--series-1); text-decoration: none; }
+  .refs a:hover { text-decoration: underline; }
+  .tag { font-size: 10.5px; font-weight: 650; border: 1px solid var(--border); border-radius: 4px;
+         padding: 0 5px; color: var(--muted); white-space: nowrap; }
+  .docchart svg { display: block; width: 100%; height: auto; }
+  .docchart .gl { stroke: var(--grid); stroke-width: 1; }
+  .docchart .ax { stroke: var(--baseline); stroke-width: 1.2; }
+  .docchart text { font: 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--muted); }
+  .docchart .anno { fill: var(--text-2); font-size: 11.5px; }
+  .docchart .annoc { fill: var(--doc-crit); font-weight: 650; font-size: 11.5px; }
 </style>
 </head>
 <body class="viz-root">
@@ -226,15 +287,182 @@
     <div>Mean free path for air at 20 °C: <code>λ = 5×10⁻³ / P</code> cm·Torr — the classic "5 microns at
     1 Torr". Regime boundaries drawn at Kn = λ/d of 0.01 (viscous) and 0.5 (molecular).</div>
     <div class="fine">Model: air at 20 °C; two lumped volumes coupled by
-    C(P̄) = C_viscous + C_molecular (Knudsen-interpolation approximation); turbopump idealized as constant
-    speed S down to a 10⁻⁹ Torr ultimate — a real turbo needs a backing pump and only reaches full speed below
-    ~10⁻² Torr, so read the viscous leg as the roughing phase; laminar viscous flow (no choked-flow correction
-    at the very start). With adhesive outgassing enabled, a 20 cm² H₂O source at 85 °C
-    (q(1 h) = 5×10⁻⁵ Torr·L/s/cm², decaying ∝ 1/t as adsorbed water depletes) feeds the chamber, and H₂O is
-    tracked as its own species — same viscous conductance (bulk flow carries everything), molecular conductance
+    C(P̄) = C_viscous + C_molecular (Knudsen-interpolation approximation); the pump is a two-stage
+    Edwards station with pressure-dependent speed S(P): an <b>nXDS10iC dry scroll</b> for roughing (peak
+    11.4 m³/h = 3.17 L/s, ultimate 7×10⁻³ mbar — note the "10iC" is the scroll, not a turbo) handing off near
+    ~0.5–1 Torr to an <b>nEXT85-class turbo</b> (84 L/s N₂ plateau at DN63, critical backing 18 mbar; the
+    Turbo-plateau slider rescales this curve). S(P) = max(turbo, scroll) at the manifold; plateau/ultimate/backing
+    anchors are catalog values (<a href="https://www.lesker.com/newweb/vacuum_pumps/pdf/brochures/next_turbo_brochure.pdf">nEXT
+    brochure</a>, <a href="https://ptbsales.com/edwards-nxds10i-rebuilt.html">nXDS10i specs</a>,
+    <a href="https://www.idealvac.com/en-us/Edwards-nXDS10iC-Corrosive-Model-Oil-Free-Dry-Scroll-Vacuum-Pump-PN:-A73602983/pp/P105124">nXDS10iC</a>)
+    while the roll-off shapes between anchors are digitized typical characteristics (approximate). Idealized
+    10⁻⁹ Torr ultimate; laminar viscous flow (no choked-flow correction at the very start). With adhesive outgassing enabled, an epoxy water reservoir
+    at 85 °C feeds the chamber — set its <b>exposed area A</b> and <b>volume V</b> with the sliders. Flux per unit
+    area is the diffusion-limited (Fickian) form <code>q(t) = c₀·√(D/πt)·e^(−t/τ₁)</code> with
+    c₀ = 1 wt % H₂O × 1.15 g/cm³ ≈ 11.7 Torr·L per cm³ of adhesive (1 mg H₂O ≈ 1.02 Torr·L),
+    D(85 °C) ≈ 4.5×10⁻⁸ cm²/s (epoxy-class; Arrhenius from D(295 K) = 2×10⁻⁹ cm²/s, E_a = 0.45 eV), and
+    reservoir time constant τ₁ = 4L²/π²D at drying depth L = V/A — so the source is <i>finite</i> and the
+    pump-down now shows a bake endpoint. At defaults (A = 20 cm², V = 0.5 cm³ ≈ 5.9 Torr·L of water),
+    q(1 h) ≈ 2.4×10⁻⁵ Torr·L/s/cm² pre-depletion (the e^(−t/τ₁) factor already bites at 1 h for thin layers); the earlier hard-coded 5×10⁻⁵ was this same quantity rounded up ~×2,
+    and its 1/t decay (a surface-desorption law) is replaced by the physically-correct 1/√t bulk-diffusion
+    decay (Chiggiato, CERN Yellow Rep. arXiv:2006.07124; dual-stage caveats in the documentation below).
+    What comes out of the glue is
+    <b>water-dominated</b>: cured epoxies at ≤100 °C emit mostly absorbed H₂O (ASTM E595 reports Water Vapor
+    Regained separately for exactly this reason), plus a minor organics fraction (amines/diluents — heavy,
+    slow through the bottleneck at √(28/M), condensable: an optics-contamination concern more than a pressure
+    one) and a little CO₂; CO on an RGA is generally the steel and the filament talking, not the glue.
+    Two wall-water populations are also modeled: the heated chamber walls' adsorbed water (fast pool, first
+    ~2 h at 85 °C) and the <i>unheated</i> manifold's 1/t tail injected on the pump side — which is why the
+    RGA water background outlives the chamber's own dry-down. H₂O is tracked as its own species — same viscous conductance (bulk flow carries everything), molecular conductance
     scaled by √(29/18) ≈ 1.27 since C_mol ∝ v̄ ∝ 1/√M. Wall re-adsorption elsewhere is neglected, and the
-    turbo is assumed to pump H₂O at full speed. Integrated with backward Euler on an adaptive log-time grid.</div>
+    turbo is assumed to pump H₂O at full speed. With the air-leak source enabled, a constant throughput Q enters the chamber and the pump-down flattens onto the floor P = Q/S_eff — constant-forever floor vs slowly-falling floor is the classic leak-vs-outgassing discriminator (see the leak-diagnosis process doc in analysis/). Integrated with backward Euler on an adaptive log-time grid; with outgassing enabled the run extends to 10⁷ s ≈ 116 days.</div>
   </div>
+
+  <!-- ================= documentation block (added 2026-07-30, generated from dewar_vacuum_model v0.2) ================= -->
+  <div class="card explain doc">
+    <h2>Vacuum-loss documentation — who owns the gas load, and when</h2>
+    <p>The sealed-dewar gas budget is brutally small: staying below the ~10⁻³ Torr soft-vacuum threshold in a
+    0.1 L volume is a total budget of <b>P·V ≈ 10⁻⁴ Torr·L ≈ 0.1 µg of water</b>, while one milligram of
+    absorbed water is ≈ 1 Torr·L and outgassing is ~90 % of the gas load in a typical high-vacuum system
+    (Grinham &amp; Chew 2017, ref. 3). Which species owns that budget changes by orders of magnitude over
+    life — the chart and bars below are computed from the companion model in
+    <code>dewar_vacuum_model/</code> (300 cm² steel, 0.1 L, 85 °C bakes; REVIEW.md has the error budget).</p>
+    <div class="docchart">
+<svg viewBox="0 0 760 360" role="img" aria-label="Gas load per mechanism versus time after pinch-off, one hour to thirty years">
+  <line class="gl" x1="52.0" y1="18" x2="52.0" y2="330"/><line class="gl" x1="194.1" y1="18" x2="194.1" y2="330"/><line class="gl" x1="281.1" y1="18" x2="281.1" y2="330"/><line class="gl" x1="346.2" y1="18" x2="346.2" y2="330"/><line class="gl" x1="426.8" y1="18" x2="426.8" y2="330"/><line class="gl" x1="457.9" y1="18" x2="457.9" y2="330"/><line class="gl" x1="560.9" y1="18" x2="560.9" y2="330"/><line class="gl" x1="610.0" y1="18" x2="610.0" y2="330"/><line class="gl" x1="52" y1="330.0" x2="610" y2="330.0"/><line class="gl" x1="52" y1="273.3" x2="610" y2="273.3"/><line class="gl" x1="52" y1="216.5" x2="610" y2="216.5"/><line class="gl" x1="52" y1="159.8" x2="610" y2="159.8"/><line class="gl" x1="52" y1="103.1" x2="610" y2="103.1"/><line class="gl" x1="52" y1="46.4" x2="610" y2="46.4"/>
+  <line class="ax" x1="52" y1="330" x2="610" y2="330"/><line class="ax" x1="52" y1="18" x2="52" y2="330"/>
+  <text x="52.0" y="346" text-anchor="middle">1 h</text><text x="194.1" y="346" text-anchor="middle">1 d</text><text x="281.1" y="346" text-anchor="middle">1 wk</text><text x="346.2" y="346" text-anchor="middle">1 mo</text><text x="426.8" y="346" text-anchor="middle">6 mo</text><text x="457.9" y="346" text-anchor="middle">1 yr</text><text x="560.9" y="346" text-anchor="middle">10 yr</text><text x="610.0" y="346" text-anchor="middle">30 yr</text><text x="46" y="334.0" text-anchor="end">10<tspan baseline-shift="super" font-size="8">-16</tspan></text><text x="46" y="277.3" text-anchor="end">10<tspan baseline-shift="super" font-size="8">-14</tspan></text><text x="46" y="220.5" text-anchor="end">10<tspan baseline-shift="super" font-size="8">-12</tspan></text><text x="46" y="163.8" text-anchor="end">10<tspan baseline-shift="super" font-size="8">-10</tspan></text><text x="46" y="107.1" text-anchor="end">10<tspan baseline-shift="super" font-size="8">-8</tspan></text><text x="46" y="50.4" text-anchor="end">10<tspan baseline-shift="super" font-size="8">-6</tspan></text>
+  <text x="20" y="174" transform="rotate(-90 20 174)" text-anchor="middle">gas load into sealed volume  (Torr·L/s, log)</text>
+  <polygon points="52.0,132.8 610.0,132.8 610.0,174.6 52.0,174.6" fill="var(--doc-h2)" opacity="0.14"/>
+  <polyline points="52.0,132.8 610.0,132.8" fill="none" stroke="var(--doc-h2)" stroke-width="2"/>
+  <polyline points="52.0,174.6 610.0,174.6" fill="none" stroke="var(--doc-h2)" stroke-width="1.2"/>
+  <polyline points="52.0,231.4 610.0,231.4" fill="none" stroke="var(--doc-ch4)" stroke-width="2"/>
+  <polyline points="52.0,242.7 610.0,242.7" fill="none" stroke="var(--doc-he)" stroke-width="2" stroke-dasharray="7 4"/>
+  <polyline points="52.0,230.7 610.0,230.7" fill="none" stroke="var(--doc-crit)" stroke-width="1.8" stroke-dasharray="5 4"/>
+  <polyline points="52.0,82.8 56.5,82.9 60.9,82.9 65.4,82.9 69.9,82.9 74.4,82.9 78.8,82.9 83.3,82.9 87.8,82.9 92.3,82.9 96.7,82.9 101.2,82.9 105.7,82.9 110.1,82.9 114.6,82.9 119.1,82.9 123.6,82.9 128.0,82.9 132.5,83.0 137.0,83.0 141.5,83.0 145.9,83.0 150.4,83.0 154.9,83.0 159.4,83.1 163.8,83.1 168.3,83.1 172.8,83.2 177.2,83.2 181.7,83.2 186.2,83.3 190.7,83.3 195.1,83.4 199.6,83.4 204.1,83.5 208.6,83.6 213.0,83.6 217.5,83.7 222.0,83.8 226.4,83.9 230.9,84.0 235.4,84.1 239.9,84.3 244.3,84.4 248.8,84.6 253.3,84.8 257.8,85.0 262.2,85.2 266.7,85.5 271.2,85.8 275.6,86.1 280.1,86.4 284.6,86.8 289.1,87.2 293.5,87.7 298.0,88.2 302.5,88.8 307.0,89.4 311.4,90.1 315.9,90.8 320.4,91.7 324.8,92.6 329.3,93.6 333.8,94.8 338.3,96.0 342.7,97.4 347.2,99.0 351.7,100.6 356.2,102.5 360.6,104.6 365.1,106.9 369.6,109.4 374.1,112.2 378.5,115.3 383.0,118.7 387.5,122.5 391.9,126.7 396.4,131.3 400.9,136.4 405.4,142.0 409.8,148.2 414.3,155.1 418.8,162.7 423.3,171.1 427.7,180.4 432.2,190.6 436.7,202.0 441.1,214.5 445.6,228.3 450.1,243.6 454.6,260.5 459.0,279.2 463.5,299.8 468.0,322.6 472.5,347.8" fill="none" stroke="var(--doc-w)" stroke-width="2.2"/>
+  <polyline points="52.0,213.8 56.5,213.8 60.9,213.8 65.4,213.9 69.9,213.9 74.4,213.9 78.8,213.9 83.3,213.9 87.8,213.9 92.3,213.9 96.7,213.9 101.2,213.9 105.7,213.9 110.1,213.9 114.6,213.9 119.1,213.9 123.6,213.9 128.0,213.9 132.5,214.0 137.0,214.0 141.5,214.0 145.9,214.0 150.4,214.0 154.9,214.0 159.4,214.1 163.8,214.1 168.3,214.1 172.8,214.1 177.2,214.2 181.7,214.2 186.2,214.3 190.7,214.3 195.1,214.4 199.6,214.4 204.1,214.5 208.6,214.5 213.0,214.6 217.5,214.7 222.0,214.8 226.4,214.9 230.9,215.0 235.4,215.1 239.9,215.3 244.3,215.4 248.8,215.6 253.3,215.8 257.8,216.0 262.2,216.2 266.7,216.5 271.2,216.8 275.6,217.1 280.1,217.4 284.6,217.8 289.1,218.2 293.5,218.7 298.0,219.2 302.5,219.8 307.0,220.4 311.4,221.1 315.9,221.8 320.4,222.7 324.8,223.6 329.3,224.6 333.8,225.8 338.3,227.0 342.7,228.4 347.2,229.9 351.7,231.6 356.2,233.5 360.6,235.6 365.1,237.9 369.6,240.4 374.1,243.2 378.5,246.3 383.0,249.7 387.5,253.5 391.9,257.7 396.4,262.3 400.9,267.4 405.4,273.0 409.8,279.2 414.3,286.1 418.8,293.7 423.3,302.1 427.7,311.4 432.2,321.6 436.7,333.0 441.1,345.5" fill="none" stroke="var(--doc-w)" stroke-width="2.2" stroke-dasharray="6 4"/>
+  <text class="anno" x="70" y="52">water, 85 °C × 3 d bake (under-baked)</text>
+  <text class="anno" x="70" y="150">water, 85 °C × 14 d (well-baked, dashed)</text>
+  <text class="anno" x="490" y="145.7">H₂ from steel (band)</text>
+  <text class="annoc" x="70" y="215.7">10-yr no-getter allowance P·V/t — note CH₄ sits right ON it</text>
+  <text class="anno" x="614" y="254.7">He (glass-window case)</text>
+  <text class="anno" x="614" y="229.4">CH₄</text>
+</svg></div>
+    
+<div class="legend">
+  <span><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--doc-w)" stroke-width="2.5"/></svg>water, under-baked (3 d)</span>
+  <span><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--doc-w)" stroke-width="2.5" stroke-dasharray="5 3"/></svg>water, well-baked (14 d)</span>
+  <span><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--doc-h2)" stroke-width="2.5"/></svg>H₂, steel bulk</span>
+  <span><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--doc-ch4)" stroke-width="2.5"/></svg>CH₄ (non-getterable)</span>
+  <span><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--doc-he)" stroke-width="2.5" stroke-dasharray="5 3"/></svg>He (only if glass)</span>
+  <span><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--doc-crit)" stroke-width="2.5" stroke-dasharray="4 3"/></svg>10-yr no-getter allowance</span>
+</div>
+    <p class="fine">Sharp knees are model-sharp (single-stage Fickian); the Monte Carlo band on these curves is
+    roughly ×2.5 each way on required bake duration — see REVIEW.md. Real leaks are excluded: if one exists it
+    dominates everything (the 10-yr no-getter allowance, 3×10⁻¹³ Torr·L/s ≈ 4×10⁻¹³ atm·cc/s, is below
+    standard He leak-test sensitivity — hermeticity is a process-control result, not a test result).</p>
+
+    <div class="sect">
+      <h3>Time regimes of domination, 1 hour → 30 years</h3>
+      
+<div class="rrow"><div class="rlab"><b>Under-baked</b> (85 °C × 3 d)<br>no getter</div>
+  <div class="rbar"><div class="rseg" style="left:0%;width:64.93%;background:var(--doc-w)"><span>water dominates</span></div><div class="rseg" style="left:64.93%;width:35.07%;background:var(--doc-h2)"><span>H₂</span></div>
+    <div class="rmark" style="left:1.2%"><div class="rnote" style="left:0;transform:none">EOL ≈ 30 min</div></div>
+  </div></div>
+<div class="rrow"><div class="rlab"><b>Well-baked</b> (85 °C × 14 d)<br>no getter</div>
+  <div class="rbar"><div class="rseg" style="left:0%;width:100.00%;background:var(--doc-h2)"><span>H₂ dominates from day one</span></div>
+    <div class="rband" style="left:27.48%;width:27.25%"></div>
+    <div class="rnote" style="left:41.1%">EOL 1–39 d (q<sub>H₂</sub> band)</div>
+  </div></div>
+<div class="rrow"><div class="rlab"><b>Any decent bake</b><br>healthy activated getter</div>
+  <div class="rbar"><div class="rseg" style="left:0%;width:100.00%;background:var(--doc-ch4)"><span>CH₄ (+ He if glass) — water & H₂ absorbed by getter</span></div>
+    <div class="rband" style="left:82.83%;width:17.17%"></div>
+    <div class="rnote" style="left:91.6%;transform:translateX(-85%)">EOL ≈ 10 yr (3.5–35)</div>
+  </div></div>
+<div class="rrow"><div class="rlab"></div><div class="raxis"><span style="left:0.0%">1 h</span><span style="left:25.47%">1 d</span><span style="left:41.06%">1 wk</span><span style="left:52.72%">1 mo</span><span style="left:67.16%">6 mo</span><span style="left:72.74%">1 yr</span><span style="left:91.2%">10 yr</span><span style="left:100.0%">30 yr</span></div></div>
+      <table class="doctab">
+        <tr><th>Time window</th><th>Dominant load</th><th>Scaling law</th><th>Basis</th></tr>
+        <tr><td>first hours–days</td><td>surface water (metal walls)</td><td>q ∝ 1/t (Elovich / multi-energy desorption)</td>
+            <td>refs 1, 2, 4, 5 — gone within hours at 85 °C</td></tr>
+        <tr><td>days–months</td><td>adhesive / polymer water</td><td>q ∝ 1/√t, then exp(−π²Dt/4L²); L = volume/vent area</td>
+            <td>refs 2, 6, 7 — sets required bake time; dual-stage tails make Fickian optimistic</td></tr>
+        <tr><td>weeks–years (no getter)</td><td>H₂ from steel bulk</td><td>≈ constant (slow √t decay), 10⁻¹³–3×10⁻¹² Torr·L/s/cm²</td>
+            <td>refs 1, 2, 8 — alone reaches 10⁻³ Torr in 1–39 d in 0.1 L → getters are mandatory</td></tr>
+        <tr><td>years–decades (gettered)</td><td>CH₄ (+ He through any glass)</td><td>linear accumulation; CH₄ ~10⁻¹⁵ Torr·L/s/cm² (rough)</td>
+            <td>refs 2, 9, 10, 11 — sets the ~10-yr-class ceiling of a well-built dewar</td></tr>
+        <tr><td>any time</td><td>real leak (weld/braze/pinch-off)</td><td>constant; binary — absent or dominant</td>
+            <td>screen by process + He accumulation test (ref 2: accumulation reaches ~10⁻¹⁸ mbar·L/s for nobles)</td></tr>
+      </table>
+    </div>
+
+    <div class="sect">
+      <h3>The caveat: water stops being the problem — CH₄ and He inherit it</h3>
+      <p><b>With a healthy activated getter</b>, water and hydrogen are absorbed after seal-off, so they stop
+      being <i>pressure</i> problems at all — leftover water instead spends getter capacity and, during cold
+      operation, cryopumps onto the coldest optic (water ice absorbs strongly at 3.16 / 4.6 / 6.1 / 13 µm;
+      ~0.1 µm on a cold filter is already measurable, ref 12). The long-term pressure rise is then owned by
+      what the getter cannot pump: <b>methane from the steel and helium through any glass</b>. Our
+      representative CH₄ rate lands almost exactly on the 10-year no-getter allowance — which is the deep
+      reason well-built gettered dewars are a "10-year-class" product — but that rate is uncertain by about
+      a decade (hence EOL 3.5–35 yr in the bars). Helium only matters through glass windows or frits
+      (~4×10⁻⁵ Torr per decade for a 4 cm², 1 mm borosilicate window at the atmosphere's 5.2 ppm He);
+      metal-brazed Ge/Si/sapphire windows make it negligible (refs 9, 13). <b>Without a getter</b>, the story
+      never gets that far: after any competent bake, H₂ owns the budget within days — water only re-enters the
+      picture if the bake was cut short of the knee. Practical consequence: <i>bake quality is measured in
+      getter-capacity margin and ice budget, while end-of-life is measured in CH₄/He accumulation</i> — two
+      different currencies, verified by different tests (rate-of-rise + RGA composition vs. long-interval
+      storage trending).</p>
+    </div>
+
+    <div class="sect">
+      <h3>Water desorption from the metal surfaces — reviewed</h3>
+      <p>Every air-exposed metal surface carries a few monolayers of water (1 monolayer = 10¹⁵ molecules/cm²
+      ≈ 3.1×10⁻⁵ Torr·L/cm²; 3 monolayers on 300 cm² ≈ 0.027 Torr·L). Unbaked, it leaves following the
+      famous inverse-time law <b>q ≈ 3×10⁻⁹/t(h) mbar·L·s⁻¹·cm⁻²</b> (refs 1, 2) — the rate depends on how
+      long you have pumped, not on the material being "done". The physical origin is first-order desorption
+      over a broad distribution of binding energies (~0.75–1.15 eV, attempt frequency ν ≈ 10¹³ s⁻¹): the
+      superposition of exponentials over that distribution <i>is</i> the 1/t law (Redhead 1995, Li &amp; Dylla
+      1993 — refs 4, 5; our implementation reproduces the empirical coefficient within ×1.5 with no fitting).
+      Baking advances an "erosion front" <b>E* = k_B·T·ln(ν·t)</b>: each decade of time buys only 2.3 k_B·T
+      (~0.07 eV at 85 °C) while temperature multiplies the whole front — bake hotter beats bake longer.
+      Worked equivalences: 85 °C × 1 day out-anneals 10 years of 22 °C storage; 60 °C needs ~13 days for the
+      same front; covering six months of 71 °C storage soak takes ~30 days at 85 °C but only ~5 at 100 °C.</p>
+      <p class="fine">Two honest footnotes. First, measured "unbaked metal" rates scatter ~100× across sources
+      (compare ref 3's fresh-stainless table against ref 1's 1-h value) — history and measurement method, not
+      physics; and throughput measurements over-read water by ~3× from readsorption (ref 3). Second, our Monte
+      Carlo says that <i>after</i> any competent bake the surface-water parameters barely move the answers
+      (|rank correlation| ≤ 0.06 on required bake time) — the precision belongs on the adhesives. Where surface
+      water does matter is pump-down behavior and RGA interpretation: this page's simulator shows the
+      manifold-vs-chamber H₂O attenuation (~S/C) that makes the gauge read optimistic during exactly that phase.</p>
+    </div>
+
+    <div class="sect">
+      <h3>References</h3>
+      <ol class="refs">
+        <li>P. Chiggiato, <i>Outgassing</i>, CERN Accelerator School lecture notes (2017) — 1/t water law, H₂ rates vs bake, polymer water content. <a href="https://cas.web.cern.ch/sites/default/files/lectures/glumslov-2017/chiggiato.pdf">PDF</a> <span class="tag">read</span></li>
+        <li>P. Chiggiato, "Outgassing properties of vacuum materials for particle accelerators," CERN Yellow Rep. (2020) — equations for desorption, diffusion, permeation; accumulation-method sensitivity. <a href="https://arxiv.org/abs/2006.07124">arXiv:2006.07124</a> <span class="tag">read</span></li>
+        <li>R. Grinham &amp; A. Chew, "A Review of Outgassing and Methods for its Reduction," <i>Appl. Sci. Converg. Technol.</i> 26(5), 95 (2017) — source taxonomy, rate tables, measurement-method comparison. <a href="https://www.e-asct.org/journal/view.html?volume=26&amp;number=5&amp;spage=95&amp;vmd=Full">open access</a> <span class="tag">read</span></li>
+        <li>P. A. Redhead, "Modeling the pump-down of a reversibly adsorbed phase," <i>J. Vac. Sci. Technol. A</i> 13, 467 (1995); and "Recommended practices for measuring and reporting outgassing data," <i>JVST A</i> 20, 1667 (2002). <span class="tag">citation verified</span></li>
+        <li>M. Li &amp; H. F. Dylla, "Model for the outgassing of water from metal surfaces," <i>JVST A</i> 11, 1702 (1993). <span class="tag">citation verified</span></li>
+        <li>Fan et al., "Effect of temperature and humidity on moisture diffusion in an epoxy moulding compound," <i>Microelectron. Reliab.</i> (2019). <a href="https://www.sciencedirect.com/science/article/pii/S0026271419311771">link</a> <span class="tag">dual-stage evidence</span></li>
+        <li>"Characterization of dual-stage moisture diffusion … of epoxy molding compounds," IEEE ECTC (2008). <a href="https://ieeexplore.ieee.org/document/4525009/">link</a> <span class="tag">dual-stage evidence</span></li>
+        <li>"Hydrogen outgassing and permeation in stainless steel and its reduction for UHV applications" (review), <i>Mater. Today Proc.</i> <a href="https://www.sciencedirect.com/science/article/abs/pii/S2214785320385795">link</a></li>
+        <li>W. G. Perkins, "Permeation and Outgassing of Vacuum Materials," <i>J. Vac. Sci. Technol.</i> 10, 543 (1973) — permeation data incl. He/glass. <a href="https://pubs.aip.org/avs/jvst/article/10/4/543/248393">link</a> <span class="tag">citation verified</span></li>
+        <li>Sandia National Labs, SAES St 707 getter hydrogen capacity &amp; activation data. <a href="https://psec.uchicago.edu/getters/sandia_ST707_getter_data_105402.pdf">PDF</a> <span class="tag">read</span></li>
+        <li>UChicago PSEC getter notes — St 707 H₂O capacity and pumping-speed estimates. <a href="https://psec.uchicago.edu/getters/H2O_monolayer_v2.pdf">PDF</a> <span class="tag">read</span></li>
+        <li>AFRL/AEDC, "The Infrared Spectral Signature of Water Ice…" DTIC ADA443824 — ice band positions and thickness effects. <a href="https://apps.dtic.mil/sti/pdfs/ADA443824.pdf">PDF</a> <span class="tag">read</span></li>
+        <li>DSPE thermomechanics knowledge base — free-molecular heat-transfer formula (Corruccini form; original: R. J. Corruccini, <i>Vacuum</i> 7–8, 19 (1959)). <a href="https://www.dspe.nl/knowledge/thermomechanics/chapter-2-in-depth/conduction-in-gasses/regime-1-free-molecular-heat-transfer/">link</a></li>
+        <li>Dewar-specific reliability: "Accelerated test and life prediction of integrated Dewar for infrared detector" (<a href="https://ieeexplore.ieee.org/document/7107176/">IEEE 7107176</a>); Lai &amp; Yang, "Failure analysis of integrated detector dewar cryocooler assembly" (<a href="https://ieeexplore.ieee.org/document/6625721/">IEEE 6625721</a>); "Five year operation of a cooler Dewar assembly … GCOM-C," <i>Cryogenics</i> (2024) (<a href="https://www.sciencedirect.com/science/article/abs/pii/S0011227524000432">link</a>). <span class="tag">metadata verified</span></li>
+        <li>NASA outgassing database (ASTM E595 TML/CVCM screening data, 10 000+ materials). <a href="https://outgassing.nasa.gov">outgassing.nasa.gov</a></li>
+        <li>J. F. O'Hanlon, <i>A User's Guide to Vacuum Technology</i>, 3rd ed., Wiley (2003) — conductance formulas used by this page's simulator. <span class="tag">textbook</span></li>
+      </ol>
+      <p class="fine">Tags: <b>read</b> = source fetched and used directly in this project's sessions; <b>citation verified</b> = canonical
+      reference cross-checked via the read sources (full text paywalled); <b>metadata verified</b> = bibliographic record confirmed,
+      full text not retrieved. Representative magnitudes above are design-dependent — regenerate for your geometry with
+      <code>dewar_vacuum_model/run_model.py</code>; uncertainty analysis in <code>REVIEW.md</code>.</p>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -244,8 +472,68 @@ const PU = 1e-9;          // turbopump ultimate pressure, Torr
 const LAM = 5.0e-3;       // lambda*P, cm*Torr
 const TARGET = 1e-6;      // target pressure for the results panel, Torr
 const FW = Math.sqrt(29 / 18);   // molecular-speed factor for H2O vs air (v ~ 1/sqrt(M))
-const OG_A = 20, OG_Q1H = 5e-5;  // adhesive area cm^2; H2O outgassing rate at 85 C, 1 h, Torr*L/s/cm^2
-const Qog = t => OG_A * OG_Q1H * 3600 / Math.max(t, 60);  // total H2O throughput, ~1/t desorption decay
+/* Adhesive H2O source at 85 C — depleting Fickian reservoir.
+   Flux per exposed area:  q(t) = c0 * sqrt(D / (pi*t)) * exp(-t/tau1)   [Torr*L/s/cm^2]
+     c0   : dissolved-water content = 1 wt% x 1.15 g/cm^3 = 11.5 mg/cm^3 = 11.7 Torr*L per cm^3
+            (1 mg H2O = 1.02 Torr*L at 295 K)
+     D    : water diffusivity in epoxy, Arrhenius D(T)=D0*exp(-Ea/kT) with D(295 K)=2e-9 cm^2/s,
+            Ea=0.45 eV  ->  D(85 C) = 4.5e-8 cm^2/s (epoxy-class, representative)
+     tau1 : slowest Fickian mode, 4*L^2/(pi^2*D), drying depth L = volume/exposed area
+   q(1 h, 85 C) = 2.4e-5 Torr*L/s/cm^2. The previously hard-coded 5e-5 was this same quantity
+   rounded up ~x2, and decayed as 1/t (surface desorption); bulk diffusion decays as 1/sqrt(t)
+   until the finite reservoir empties at ~tau1. Refs: Chiggiato, CERN Yellow Rep. arXiv:2006.07124;
+   Crank, The Mathematics of Diffusion. Set area/volume with the sliders. */
+const OG_C0  = 11.7;      // Torr*L per cm^3 of adhesive (1 wt% H2O, rho = 1.15 g/cm^3)
+const OG_D85 = 4.53e-8;   // cm^2/s, water in epoxy at 85 C
+const ogTau1 = (A, V) => { const Lc = V / A; return 4*Lc*Lc / (Math.PI*Math.PI*OG_D85); };
+const ogQ1hA = () => OG_C0 * Math.sqrt(OG_D85 / (Math.PI*3600));   // per-cm^2 flux at 1 h, pre-depletion
+const Qog = (t, A, V) => {
+  const tt = Math.max(t, 60);
+  return A * OG_C0 * Math.sqrt(OG_D85 / (Math.PI*tt)) * Math.exp(-tt / ogTau1(A, V));
+};
+
+/* ---- Edwards pump station (defaults; sources in the model note) ----
+   Roughing: Edwards nXDS10iC dry scroll — peak 11.4 m3/h = 3.17 L/s, ultimate 7e-3 mbar
+             (5.3e-3 Torr). Anchors from the Edwards catalog; intermediate points digitized
+             from the typical nXDS speed curve (approximate).
+   High-vac: Edwards nEXT85 turbo, DN63 — 84 L/s N2 plateau, critical backing 18 mbar,
+             recommended backing pump nXDS-class. Plateau + backing anchors from the nEXT
+             brochure; the high-pressure roll-off is a digitized typical turbo characteristic.
+   Station speed at the manifold: S(P) = max(S_turbo, S_scroll) — bypass roughing, then
+   hand-off to the turbo near ~0.5-1 Torr. Note the nXDS10iC is the SCROLL (roughing) pump,
+   not a turbo. Units below: [Torr, L/s]. */
+const SCROLL_PTS = [[760,2.6],[100,3.0],[10,3.17],[1,3.1],[0.3,2.8],[0.1,2.3],
+                    [0.03,1.4],[0.01,0.5],[5.25e-3,1e-4]];
+const TURBO_PTS  = [[1e-9,84],[7.5e-4,84],[2.5e-3,80],[7.5e-3,68],[2.5e-2,47],
+                    [7.5e-2,26],[0.25,11],[0.75,3.5],[2.5,1.0],[7.5,0.25],[13.5,0.05]];
+const S_TURBO0 = 84;   // catalog plateau, L/s N2 — the "Turbo plateau" slider rescales this
+function interpTable(pts, P) {
+  if (P <= pts[0][0]) return pts[0][1];
+  if (P >= pts[pts.length-1][0]) return pts[pts.length-1][1];
+  for (let i = 1; i < pts.length; i++) if (P <= pts[i][0]) {
+    const f = (Math.log(P) - Math.log(pts[i-1][0])) / (Math.log(pts[i][0]) - Math.log(pts[i-1][0]));
+    return Math.exp(Math.log(pts[i-1][1]) + f * (Math.log(pts[i][1]) - Math.log(pts[i-1][1])));
+  }
+  return pts[pts.length-1][1];
+}
+/* scroll table is descending in usage order — store ascending for interp */
+const SCROLL_ASC = SCROLL_PTS.slice().reverse();
+const pumpS = (P, scale) => Math.max(interpTable(TURBO_PTS, P) * scale, interpTable(SCROLL_ASC, P));
+
+/* Wall-water sources (both are H2O, different kinetics and injection points).
+   (a) Chamber/dewar walls, heated with the article to 85 C: ~3 monolayers of adsorbed
+       water on A_DW of metal (3.05e-5 Torr*L/cm^2 per monolayer) drains as a fast pool —
+       app-grade single time constant 30 min (the multi-energy window at 85 C empties
+       within the first hours; see the documentation block).
+   (b) Vacuum manifold + plumbing, UNHEATED at 22 C: the classic unbaked-metal law
+       q = 2.2e-9 * (1 h/t) Torr*L/s/cm^2 (CERN/Chiggiato), injected into the MANIFOLD —
+       this slow 1/t tail is the water background the RGA actually sits in, and it
+       outlives the hot chamber's own water by design: heat what you can, know the rest. */
+const A_DW = 300, A_MAN = 600;          // cm^2: chamber interior / manifold+plumbing
+const DW_I0 = 3 * 3.05e-5 * A_DW;       // Torr*L adsorbed inventory on heated walls
+const DW_TAU = 1800;                    // s
+const Qdw  = t => DW_I0 / DW_TAU * Math.exp(-t / DW_TAU);
+const Qman = t => A_MAN * 2.2e-9 * 3600 / Math.max(t, 60);
 
 const mfp = P => LAM / P;                              // cm
 const condMol = (d, L) => 12.1 * d*d*d / (L + 1.333*d); // L/s, end-corrected
@@ -255,10 +543,10 @@ const knudsen = (P, d) => mfp(P) / d;
 const regime  = Kn => Kn > 0.5 ? "molecular" : (Kn < 0.01 ? "viscous" : "transitional");
 
 /* one backward-Euler step for one gas species (Q = source into chamber, Torr*L/s) */
-function beStep(P1, P2, C, Q, Pu, p, dt) {
-  const a11 = 1 + dt*(C + p.S)/p.V1, a12 = -dt*C/p.V1;
+function beStep(P1, P2, C, Q1, Q2, Pu, S, p, dt) {
+  const a11 = 1 + dt*(C + S)/p.V1,   a12 = -dt*C/p.V1;
   const a21 = -dt*C/p.V2,            a22 = 1 + dt*C/p.V2;
-  const b1 = P1 + dt*p.S*Pu/p.V1,    b2 = P2 + dt*Q/p.V2;
+  const b1 = P1 + dt*(S*Pu + Q1)/p.V1,  b2 = P2 + dt*Q2/p.V2;
   const det = a11*a22 - a12*a21;
   return [(b1*a22 - a12*b2)/det, (a11*b2 - a21*b1)/det];
 }
@@ -274,14 +562,18 @@ function simulate(p) {
     W1.push(Math.max(P1w, 1e-12)); W2.push(Math.max(P2w, 1e-12));
   };
   rec();
-  const tMax = p.og ? 1e6 : 1e9;   // with 1/t outgassing the decay never ends; cap at ~11 days
+  // windows: outgassing 1e7 s (~116 d); leak-only 1e5 s (floor is steady well before); else until base
+  const tMax = p.og ? 1e7 : (p.lk ? 1e5 : 1e9);
   while (P2a + P2w > 2e-9 && t < tMax && steps < 60000) {
     steps++;
     const Cv = condVis(p.d, p.L, 0.5 * ((P1a + P1w) + (P2a + P2w)));  // viscous term uses mean total pressure
     const Cm = condMol(p.d, p.L);
-    const Q = p.og ? Qog(t) : 0;
-    const na = beStep(P1a, P2a, Cv + Cm, 0, PU, p, dt);
-    const nw = beStep(P1w, P2w, Cv + Cm * FW, Q, 0, p, dt);
+    const Q = p.og ? Qog(t, p.ogA, p.ogV) : 0;
+    const Sp = pumpS(P1a + P1w, p.St / S_TURBO0);   // station speed at manifold pressure
+    const Qw2 = Q + (p.ww ? Qdw(t) : 0);            // chamber-side water: glue + hot walls
+    const Qw1 = p.ww ? Qman(t) : 0;                 // manifold-side water: unheated plumbing
+    const na = beStep(P1a, P2a, Cv + Cm, 0, p.lk ? p.Ql : 0, PU, Sp, p, dt);
+    const nw = beStep(P1w, P2w, Cv + Cm * FW, Qw1, Qw2, 0, Sp, p, dt);
     const rel = Math.max(
       Math.abs(na[0] + nw[0] - (P1a + P1w)) / Math.max(P1a + P1w, 1e-10),
       Math.abs(na[1] + nw[1] - (P2a + P2w)) / Math.max(P2a + P2w, 1e-10));
@@ -348,11 +640,15 @@ function fmtVal(v) {
 /* ---------------- controls (slider + typeable field) ---------------- */
 const PARAMS = [
   { key:"P0", label:"Starting pressure", unit:"Torr", lo:0.01, hi:760, def:760 },
-  { key:"S",  label:"Pump speed (turbo)", unit:"L/s", lo:50, hi:20000, def:1500 },
+  { key:"St", label:"Turbo plateau speed", unit:"L/s", lo:5, hi:2000, def:84 },
   { key:"d",  label:"Bottleneck diameter", unit:"mm", lo:0.2, hi:10, def:1, toDisp:v=>v*10, fromDisp:v=>v/10 },
   { key:"L",  label:"Bottleneck length", unit:"cm", lo:2, hi:30, def:10 },
   { key:"V1", label:"Manifold volume", unit:"L", lo:0.5, hi:20, def:2 },
   { key:"V2", label:"Chamber volume", unit:"L", lo:5, hi:1000, def:100 },
+  { key:"ogA", label:"Adhesive exposed area", unit:"cm²", lo:1, hi:100, def:20 },
+  { key:"ogV", label:"Adhesive volume", unit:"cm³", lo:0.02, hi:2, def:0.5 },
+  { key:"Ql", label:"Air-leak rate", unit:"×10⁻⁹ Torr·L/s", lo:1e-9, hi:1e-4, def:1e-6,
+    toDisp:v=>v*1e9, fromDisp:v=>v/1e9 },
 ];
 const state = {};
 const ctlBox = document.getElementById("controls");
@@ -395,10 +691,38 @@ state.og = false;
   div.className = "ctl";
   div.innerHTML = `<label class="ck"><input type="checkbox" id="ogChk">
       <span>Adhesive outgassing<br><span class="fine">H₂O source in chamber, 85 °C</span></span></label>
-    <div class="fine" style="margin-top:4px">q(1 h) = 5×10⁻⁵ Torr·L/s/cm² × 20 cm², decaying ∝ 1/t</div>`;
+    <div class="fine" id="ogNote" style="margin-top:4px"></div>`;
   ctlBox.appendChild(div);
   div.querySelector("#ogChk").addEventListener("change", ev => {
     state.og = ev.target.checked;
+    recompute();
+  });
+}
+/* wall & manifold water toggle (default ON — the walls exist whether you like it or not) */
+state.ww = true;
+{
+  const div = document.createElement("div");
+  div.className = "ctl";
+  div.innerHTML = `<label class="ck"><input type="checkbox" id="wwChk" checked>
+      <span>Wall &amp; manifold water<br><span class="fine">chamber walls at 85 °C (fast pool) + unheated manifold at 22 °C (slow 1/t)</span></span></label>
+    <div class="fine" id="wwNote" style="margin-top:4px"></div>`;
+  ctlBox.appendChild(div);
+  div.querySelector("#wwChk").addEventListener("change", ev => {
+    state.ww = ev.target.checked;
+    recompute();
+  });
+}
+/* air-leak toggle */
+state.lk = false;
+{
+  const div = document.createElement("div");
+  div.className = "ctl";
+  div.innerHTML = `<label class="ck"><input type="checkbox" id="lkChk">
+      <span>Air leak into chamber<br><span class="fine">constant throughput, set by the leak-rate slider</span></span></label>
+    <div class="fine" id="lkNote" style="margin-top:4px"></div>`;
+  ctlBox.appendChild(div);
+  div.querySelector("#lkChk").addEventListener("change", ev => {
+    state.lk = ev.target.checked;
     recompute();
   });
 }
@@ -612,7 +936,7 @@ function drawSchem(p) {
   snow.textContent = "turbo pump";
   const slab = el("text", { x: pump.x+pump.w/2, y: pump.y+pump.h+18, "text-anchor":"middle",
                             "font-size": 11.5, fill: "var(--muted)" }, schem);
-  slab.textContent = "S = " + fmtS(p.S) + " L/s";
+  slab.textContent = "nEXT " + fmtS(p.St) + " L/s + nXDS10iC";
   /* duct pump->manifold (wide, unrestricted) */
   el("rect", { x: pump.x+pump.w, y: cy-22, width: 16, height: 44, fill: "none", stroke: line, "stroke-width": 1.4 }, schem);
   /* manifold */
@@ -786,6 +1110,23 @@ function stepParticles(dtf, P1, P2) {
   }
 }
 
+/* single lumped volume (no bottleneck) pumped by the same station curve */
+function idealSim(p) {
+  const V = p.V1 + p.V2, tMax = p.og ? 1e7 : (p.lk ? 1e5 : 1e9);
+  let P = p.P0, t = 0, dt = 1e-7, last = 0;
+  const X = [1e-7], Y = [P];
+  while (P > 2e-9 && t < tMax && X.length < 5000) {
+    const S = pumpS(P, p.St / S_TURBO0);
+    const Q = (p.og ? Qog(t, p.ogA, p.ogV) : 0) + (p.lk ? p.Ql : 0) + (p.ww ? Qdw(t) + Qman(t) : 0);
+    P = (P + dt * (S * PU + Q) / V) / (1 + dt * S / V);   // backward Euler
+    t += dt;
+    if (t >= last * 1.05) { X.push(t); Y.push(Math.max(P, 1e-12)); last = t; }
+    dt = Math.min(dt * 1.2, 0.02 * t + 1e-7);
+  }
+  X.push(Math.max(t, 1e-6)); Y.push(Math.max(P, 1e-12));
+  return { X, Y };
+}
+
 /* ---------------- playback + recompute ---------------- */
 let sim = null, ideal = null, u = 0, playing = false, lastFrame = null;
 const playBtn = document.getElementById("play");
@@ -822,27 +1163,40 @@ function buildRuler() {
 function recompute() {
   sim = simulate(state);
   const Vtot = state.V1 + state.V2;
-  const tIdeal = t => PU + (state.P0 - PU) * Math.exp(-state.S * t / Vtot) +
-                      (state.og ? Qog(t) / state.S : 0);   // quasi-static outgassing floor Q/S
-  ideal = { X: sim.T, Y: sim.T.map(tIdeal) };
+  ideal = idealSim(state);   // numeric single-volume with the same S(P) station curve
 
   const Cm = condMol(state.d, state.L);
-  const SeffFloor = 1 / (1/state.S + 1/Cm);
+  const SeffFloor = 1 / (1/state.St + 1/Cm);
   const tBn = timeToReach(sim.T, sim.P2, TARGET);
-  const tId = state.og ? timeToReach(ideal.X, ideal.Y, TARGET)
-                       : (Vtot / state.S) * Math.log((state.P0 - PU) / (TARGET - PU));
+  const tId = timeToReach(ideal.X, ideal.Y, TARGET);
   document.getElementById("tileT").textContent = fmtTime(tBn);
   document.getElementById("tileTnote").textContent =
-    tBn ? "S_eff at base ≈ " + fmtS(SeffFloor) + " L/s of " + fmtS(state.S) + " available" : "did not reach target";
+    tBn ? "S_eff at base ≈ " + fmtS(SeffFloor) + " L/s of the " + fmtS(state.St) + " L/s turbo plateau" : "did not reach target";
   document.getElementById("tileTi").textContent = fmtTime(tId);
   document.getElementById("tileSlow").textContent =
     (tBn && tId > 0) ? "×" + (tBn/tId >= 100 ? Math.round(tBn/tId).toLocaleString() : (tBn/tId).toPrecision(2)) : "–";
   document.getElementById("tileC").textContent = fmtS(Cm) + " L/s";
   document.getElementById("tileCnote").textContent =
     "vs " + fmtS(condVis(state.d, state.L, state.P0)) + " L/s viscous at start";
+  document.getElementById("wwNote").innerHTML = state.ww
+    ? "hot walls: " + fmtP(DW_I0) + " Torr·L pool, τ = 30 min — gone in the first ~2 h.  " +
+      "manifold (" + A_MAN + " cm², 22 °C): q(1 h) = " + fmtP(Qman(3600)) + " Torr·L/s, ∝ 1/t — " +
+      "the RGA's water background long after the chamber is dry"
+    : "off — walls treated as perfectly clean";
+  document.getElementById("lkNote").innerHTML = state.lk
+    ? "Q = " + fmtP(state.Ql) + " Torr·L/s (" + fmtP(state.Ql / 0.76) + " atm·cc/s) — " +
+      "He-test equivalent ×2.69 = " + fmtP(state.Ql * 2.69 / 0.76) + " atm·cc/s He. " +
+      "Predicted floor P₂ = Q/S_eff ≈ " + fmtP(state.Ql * (1/state.St + 1/condMol(state.d, state.L))) + " Torr — " +
+      "a floor that does NOT fall with time is the leak signature."
+    : "off — base pressure is outgassing/ultimate-limited";
+  document.getElementById("ogNote").innerHTML =
+    "q(1 h, pre-depletion) = " + fmtP(ogQ1hA()) + " Torr·L/s/cm² × " + fmtS(state.ogA) + " cm² — ∝ 1/√t, " +
+    "reservoir " + fmtP(state.ogV * OG_C0) + " Torr·L, τ₁ = " + fmtTime(ogTau1(state.ogA, state.ogV)) +
+    " (L = V/A = " + (+(state.ogV / state.ogA * 10).toPrecision(2)) + " mm)";
+  const wet = state.og || state.ww;
   for (const id of ["rgaRow1", "rgaRow2", "rgaNote"])
-    document.getElementById(id).style.display = state.og ? "" : "none";
-  if (state.og) {
+    document.getElementById(id).style.display = wet ? "" : "none";
+  if (wet) {
     const n = sim.T.length - 1;
     const att = sim.W2[n] / Math.max(sim.W1[n], 1e-30);
     document.getElementById("tileRga").textContent = fmtP(sim.W1[n]) + " Torr";
@@ -857,7 +1211,7 @@ function recompute() {
     { name: "chamber P₂" + (state.og ? " total" : ""), color: "var(--series-1)", X: sim.T, Y: sim.P2 },
     { name: "pump side P₁" + (state.og ? " total" : ""), color: "var(--series-2)", X: sim.T, Y: sim.P1 },
   ];
-  if (state.og) s1.push(
+  if (state.og || state.ww) s1.push(
     { name: "chamber H₂O", color: "var(--series-1)", dash: "2 3", X: sim.T, Y: sim.W2 },
     { name: "H₂O at RGA (manifold)", color: "var(--series-2)", dash: "2 3", X: sim.T, Y: sim.W1 });
   s1.push({ name: "no bottleneck (ideal)", color: "var(--series-3)", dash: "6 5", X: ideal.X, Y: ideal.Y });
@@ -883,11 +1237,12 @@ function recompute() {
   for (let i = 0; i <= 220; i++) {
     const P = 10 ** (-9 + i / 220 * (Math.log10(state.P0) + 9));
     const C = cond(state.d, state.L, P);
-    Pg.push(P); Cg.push(C); Sg.push(state.S); Eg.push(1 / (1/state.S + 1/C));
+    const Sp = pumpS(P, state.St / S_TURBO0);
+    Pg.push(P); Cg.push(C); Sg.push(Sp); Eg.push(1 / (1/Sp + 1/C));
   }
   const yMin = Math.max(1e-3, SeffFloor / 8);
   c2.draw({
-    x0: 1e-9, x1: state.P0, y0: yMin, y1: Math.max(state.S, Cm) * 40,
+    x0: 1e-9, x1: state.P0, y0: yMin, y1: Math.max(state.St, Cm) * 40,
     bands: [
       { lo: pV, hi: 1e9, label: "viscous", wash: false },
       { lo: pM, hi: pV, label: "transitional", wash: true },
@@ -895,17 +1250,17 @@ function recompute() {
     ],
     series: [
       { name: "tube conductance C", color: "var(--series-2)", X: Pg, Y: Cg },
-      { name: "pump speed S", color: "var(--muted)", dash: "6 5", X: Pg, Y: Sg },
+      { name: "station speed S(P) — nXDS10iC + nEXT", color: "var(--muted)", dash: "6 5", X: Pg, Y: Sg },
       { name: "delivered to chamber S_eff", color: "var(--series-1)", X: Pg, Y: Eg },
     ],
     labels: [
       { x: 3e-9, y: SeffFloor, dy: -7, text: "conductance-limited floor ≈ " + fmtS(SeffFloor) + " L/s" },
-      { x: 3e-9, y: state.S, dy: -7, text: "S" },
+      { x: 3e-9, y: state.St, dy: -7, text: "S(P)" },
     ],
   });
   c2.setLegend([
     { name: "tube conductance C", color: "var(--series-2)" },
-    { name: "pump speed S", color: "var(--muted)", dash: "5 4" },
+    { name: "station speed S(P) — nXDS10iC + nEXT", color: "var(--muted)", dash: "5 4" },
     { name: "delivered speed S_eff", color: "var(--series-1)" },
   ]);
 

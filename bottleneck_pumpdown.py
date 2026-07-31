@@ -38,27 +38,82 @@ def cond(d, L, Pavg):
 
 
 FW = math.sqrt(29.0 / 18.0)   # molecular-speed factor for H2O (M=18) vs air (M=29)
-OG_A = 20.0                   # adhesive area, cm^2
-OG_Q1H = 5e-5                 # H2O outgassing rate at 85 C after 1 h, Torr*L/s/cm^2
+
+# ---- Edwards pump station (defaults; anchors from catalog, roll-offs digitized) ----
+# Roughing: nXDS10iC dry scroll — peak 11.4 m3/h = 3.17 L/s, ultimate 7e-3 mbar (5.3e-3 Torr).
+# High-vac: nEXT85 (DN63) turbo — 84 L/s N2 plateau, critical backing 18 mbar.
+# Station speed at the manifold: S(P) = max(turbo, scroll). Units [Torr, L/s].
+SCROLL_PTS = [(5.25e-3, 1e-4), (0.01, 0.5), (0.03, 1.4), (0.1, 2.3), (0.3, 2.8),
+              (1.0, 3.1), (10.0, 3.17), (100.0, 3.0), (760.0, 2.6)]
+TURBO_PTS = [(1e-9, 84.0), (7.5e-4, 84.0), (2.5e-3, 80.0), (7.5e-3, 68.0), (2.5e-2, 47.0),
+             (7.5e-2, 26.0), (0.25, 11.0), (0.75, 3.5), (2.5, 1.0), (7.5, 0.25), (13.5, 0.05)]
+S_TURBO0 = 84.0
 
 
-def q_og(t):
-    return OG_A * OG_Q1H * 3600.0 / max(t, 60.0)      # total throughput, ~1/t desorption decay
+def _interp_table(pts, P):
+    if P <= pts[0][0]:
+        return pts[0][1]
+    if P >= pts[-1][0]:
+        return pts[-1][1]
+    for i in range(1, len(pts)):
+        if P <= pts[i][0]:
+            f = (math.log(P) - math.log(pts[i-1][0])) / (math.log(pts[i][0]) - math.log(pts[i-1][0]))
+            return math.exp(math.log(pts[i-1][1]) + f * (math.log(pts[i][1]) - math.log(pts[i-1][1])))
+    return pts[-1][1]
 
 
-def be_step(P1, P2, C, Q, Pu, S, V1, V2, dt):
-    """One backward-Euler step for one gas species (Q = source into chamber)."""
+def pump_s(P, scale=1.0):
+    """Station pumping speed at manifold pressure P [Torr] -> L/s."""
+    return max(_interp_table(TURBO_PTS, P) * scale, _interp_table(SCROLL_PTS, P))
+
+# Adhesive H2O source at 85 C — depleting Fickian reservoir (mirrors the HTML app).
+#   q(t) = c0 * sqrt(D/(pi t)) * exp(-t/tau1) per cm^2 exposed;  tau1 = 4 L^2/(pi^2 D),  L = V/A.
+#   c0 = 1 wt% x 1.15 g/cm^3 = 11.7 Torr*L/cm^3; D(85 C) = 4.53e-8 cm^2/s (epoxy-class,
+#   Arrhenius from D(295 K)=2e-9 cm^2/s, Ea=0.45 eV). q(1 h) = 2.4e-5 Torr*L/s/cm^2 — the old
+#   hard-coded 5e-5 was this rounded up ~x2, with an (incorrect for bulk diffusion) 1/t decay.
+#   Refs: Chiggiato, CERN Yellow Rep. arXiv:2006.07124; Crank, The Mathematics of Diffusion.
+OG_C0 = 11.7                  # Torr*L per cm^3 of adhesive (1 wt% H2O, rho 1.15 g/cm^3)
+OG_D85 = 4.53e-8              # cm^2/s, water in epoxy at 85 C
+OG_A0, OG_V0 = 20.0, 0.5      # default exposed area cm^2, volume cm^3
+
+# Wall-water sources (both H2O; different kinetics and injection points):
+#  hot chamber walls (85 C): ~3 ML on A_DW draining as a 30-min pool;
+#  unheated manifold (22 C): unbaked 1/t law into V1 — the RGA's water background.
+A_DW, A_MAN = 300.0, 600.0
+DW_I0, DW_TAU = 3 * 3.05e-5 * A_DW, 1800.0
+
+
+def q_dw(t):
+    return DW_I0 / DW_TAU * math.exp(-t / DW_TAU)
+
+
+def q_man(t):
+    return A_MAN * 2.2e-9 * 3600.0 / max(t, 60.0)
+
+
+def og_tau1(A, V):
+    Lc = V / A
+    return 4.0 * Lc * Lc / (math.pi ** 2 * OG_D85)
+
+
+def q_og(t, A=OG_A0, V=OG_V0):
+    tt = max(t, 60.0)
+    return A * OG_C0 * math.sqrt(OG_D85 / (math.pi * tt)) * math.exp(-tt / og_tau1(A, V))
+
+
+def be_step(P1, P2, C, Q1, Q2, Pu, S, V1, V2, dt):
+    """One backward-Euler step for one species (Q1 -> manifold, Q2 -> chamber)."""
     a11 = 1 + dt * (C + S) / V1
     a12 = -dt * C / V1
     a21 = -dt * C / V2
     a22 = 1 + dt * C / V2
-    b1 = P1 + dt * S * Pu / V1
-    b2 = P2 + dt * Q / V2
+    b1 = P1 + dt * (S * Pu + Q1) / V1
+    b2 = P2 + dt * Q2 / V2
     det = a11 * a22 - a12 * a21
     return (b1 * a22 - a12 * b2) / det, (a11 * b2 - a21 * b1) / det
 
 
-def simulate(P0, S, d, L, V1, V2, og=False):
+def simulate(P0, St, d, L, V1, V2, og=False, ogA=OG_A0, ogV=OG_V0, lk=False, Ql=1e-6, ww=True):
     """Two-volume, two-species (air + outgassed H2O) pumpdown, backward Euler.
 
     Returns T, P1_total, P2_total, W1 (H2O at manifold/RGA), W2 (H2O in chamber).
@@ -75,14 +130,17 @@ def simulate(P0, S, d, L, V1, V2, og=False):
 
     rec()
     last_rec, steps = 0.0, 0
-    t_max = 1e6 if og else 1e9   # 1/t outgassing never ends; cap at ~11 days
+    t_max = 1e7 if og else (1e5 if lk else 1e9)   # og ~116 d; leak-only 1e5 s (steady floor)
     while P2a + P2w > 2e-9 and t < t_max and steps < 60000:
         steps += 1
         cv = cond_vis(d, L, 0.5 * ((P1a + P1w) + (P2a + P2w)))
         cm = cond_mol(d, L)
-        Q = q_og(t) if og else 0.0
-        n1a, n2a = be_step(P1a, P2a, cv + cm, 0.0, PU, S, V1, V2, dt)
-        n1w, n2w = be_step(P1w, P2w, cv + cm * FW, Q, 0.0, S, V1, V2, dt)
+        Q = q_og(t, ogA, ogV) if og else 0.0
+        Sp = pump_s(P1a + P1w, St / S_TURBO0)   # station speed at manifold pressure
+        qw2 = Q + (q_dw(t) if ww else 0.0)      # chamber-side water: glue + hot walls
+        qw1 = q_man(t) if ww else 0.0           # manifold-side water: unheated plumbing
+        n1a, n2a = be_step(P1a, P2a, cv + cm, 0.0, (Ql if lk else 0.0), PU, Sp, V1, V2, dt)
+        n1w, n2w = be_step(P1w, P2w, cv + cm * FW, qw1, qw2, 0.0, Sp, V1, V2, dt)
         rel = max(abs(n1a + n1w - (P1a + P1w)) / max(P1a + P1w, 1e-10),
                   abs(n2a + n2w - (P2a + P2w)) / max(P2a + P2w, 1e-10))
         if rel > 0.25 and dt > 1e-8:
@@ -96,6 +154,23 @@ def simulate(P0, S, d, L, V1, V2, og=False):
         dt = min(dt * 1.2, 0.02 * t + 1e-7)
     rec()
     return T, A1, A2, W1, W2
+
+
+def ideal_sim(P0, St, V, og=False, ogA=OG_A0, ogV=OG_V0, lk=False, Ql=1e-6, ww=True):
+    """Single lumped volume (no bottleneck) pumped by the same S(P) station curve."""
+    P, t, dt, last = P0, 0.0, 1e-7, 0.0
+    X, Y = [1e-7], [P0]
+    t_max = 1e7 if og else (1e5 if lk else 1e9)
+    while P > 2e-9 and t < t_max and len(X) < 5000:
+        S = pump_s(P, St / S_TURBO0)
+        Q = (q_og(t, ogA, ogV) if og else 0.0) + (Ql if lk else 0.0) + ((q_dw(t) + q_man(t)) if ww else 0.0)
+        P = (P + dt * (S * PU + Q) / V) / (1 + dt * S / V)
+        t += dt
+        if t >= last * 1.05:
+            X.append(t); Y.append(max(P, 1e-12)); last = t
+        dt = min(dt * 1.2, 0.02 * t + 1e-7)
+    X.append(max(t, 1e-6)); Y.append(max(P, 1e-12))
+    return X, Y
 
 
 def time_to_reach(T, P, tgt):
@@ -124,24 +199,36 @@ def fmt_time(s):
 
 # ---------------- headless check ----------------
 def check():
-    P0, S, d, L, V1, V2 = 760.0, 1500.0, 1.0, 10.0, 2.0, 100.0
-    T, P1, P2, _, _ = simulate(P0, S, d, L, V1, V2)
+    P0, St, d, L, V1, V2 = 760.0, 84.0, 1.0, 10.0, 2.0, 100.0
+    T, P1, P2, _, _ = simulate(P0, St, d, L, V1, V2)
     t_bn = time_to_reach(T, P2, TARGET)
-    t_id = (V1 + V2) / S * math.log((P0 - PU) / (TARGET - PU))
+    Xi, Yi = ideal_sim(P0, St, V1 + V2)
+    t_id = time_to_reach(Xi, Yi, TARGET)
     cm = cond_mol(d, L)
+    print(f"station: nXDS10iC scroll + nEXT {St:g} L/s turbo; "
+          f"S(760 Torr)={pump_s(760):.2f}, S(1 Torr)={pump_s(1.0):.2f}, S(1e-5 Torr)={pump_s(1e-5):.1f} L/s")
     print(f"V1 manifold      = {V1:g} L")
     print(f"C_mol            = {cm:.3g} L/s")
-    print(f"S_eff floor      = {1/(1/S + 1/cm):.3g} L/s (pump offers {S:g})")
+    print(f"S_eff floor      = {1/(1/St + 1/cm):.3g} L/s (turbo plateau {St:g})")
     print(f"t to 1e-6 Torr   = {fmt_time(t_bn)}  (through bottleneck)")
     print(f"t ideal          = {fmt_time(t_id)}  (pump direct on V1+V2)")
     print(f"slowdown         = x{t_bn/t_id:,.0f}")
     print(f"sim points       = {len(T)}, t_end = {fmt_time(T[-1])}")
-    print("-- with adhesive H2O outgassing (85 C, 20 cm^2) --")
-    T, P1, P2, W1, W2 = simulate(P0, S, d, L, V1, V2, og=True)
+    print(f"-- with adhesive H2O outgassing (85 C, A={OG_A0:g} cm^2, V={OG_V0:g} cm^3) --")
+    print(f"q(1 h): pre-depletion {OG_C0*math.sqrt(OG_D85/(math.pi*3600.0)):.2e}, effective {q_og(3600.0)/OG_A0:.2e} Torr*L/s/cm^2; reservoir {OG_V0*OG_C0:.1f} Torr*L; "
+          f"tau1 = {og_tau1(OG_A0, OG_V0)/3600:.2f} h (L = {OG_V0/OG_A0*10:.2f} mm)")
+    T, P1, P2, W1, W2 = simulate(P0, St, d, L, V1, V2, og=True)
     t_bn = time_to_reach(T, P2, TARGET)
     print(f"t to 1e-6 Torr   = {fmt_time(t_bn)}  (None = not reached by {fmt_time(T[-1])})")
     print(f"chamber end      = {P2[-1]:.3g} Torr total, H2O {W2[-1]:.3g} Torr")
     print(f"H2O at RGA       = {W1[-1]:.3g} Torr  (attenuation x{W2[-1]/W1[-1]:,.0f})")
+    print("-- wall/manifold water always on: hot-wall pool "
+          f"{DW_I0:.2e} Torr*L (tau 30 min); manifold q(1 h) = {q_man(3600.0):.2e} Torr*L/s --")
+    print("-- with 1e-6 Torr*L/s air leak --")
+    T, P1, P2, _, _ = simulate(P0, St, d, L, V1, V2, lk=True, Ql=1e-6)
+    cm = cond_mol(d, L)
+    print(f"floor P2 = {P2[-1]:.3g} Torr vs predicted Q/S_eff = {1e-6*(1/St + 1/cm):.3g} Torr "
+          f"(He-test equivalent {1e-6*2.69/0.76:.2e} atm cc/s)")
 
 
 # ---------------- interactive figure ----------------
@@ -160,14 +247,16 @@ def interactive():
     sliders = []
     specs = [  # label, lo, hi, default (log-mapped)
         ("Start pressure (Torr)", 0.01, 760, 760),
-        ("Pump speed (L/s)", 50, 20000, 1500),
+        ("Turbo plateau (L/s)", 5, 2000, 84),
         ("Tube diameter (cm)", 0.2, 10, 1.0),
         ("Tube length (cm)", 2, 30, 10),
         ("Manifold volume (L)", 0.5, 20, 2),
         ("Chamber volume (L)", 5, 1000, 100),
+        ("Adhesive exposed area (cm²)", 1, 100, 20),
+        ("Adhesive volume (cm³)", 0.02, 2, 0.5),
     ]
     for i, (lab, lo, hi, d0) in enumerate(specs):
-        ax = fig.add_axes([0.30, 0.205 - i * 0.033, 0.55, 0.022])
+        ax = fig.add_axes([0.30, 0.245 - i * 0.030, 0.55, 0.020])
         s = Slider(ax, lab, math.log10(lo), math.log10(hi),
                    valinit=math.log10(d0), valfmt="")
         sliders.append(s)
@@ -190,16 +279,17 @@ def interactive():
     ax2.grid(alpha=0.25, lw=0.5); ax2.legend(fontsize=9, loc="upper left")
 
     ax_ck = fig.add_axes([0.045, 0.05, 0.17, 0.09], frameon=False)
-    ck = CheckButtons(ax_ck, ["Adhesive H2O, 85 C"], [False])
+    ck = CheckButtons(ax_ck, ["Adhesive H2O, 85 C\n(area/volume sliders)"], [False])
 
     def update(_=None):
-        P0, S, d, L, V1, V2 = (10 ** s.val for s in sliders)
+        P0, St, d, L, V1, V2, ogA, ogV = (10 ** s.val for s in sliders)
         og = ck.get_status()[0]
         for s, (lab, *_r) in zip(sliders, specs):
             s.valtext.set_text(f"{10**s.val:,.3g}")
-        T, P1, P2, W1, W2 = simulate(P0, S, d, L, V1, V2, og)
-        t_id_curve = [PU + (P0 - PU) * math.exp(-S * t / (V1 + V2))
-                      + (q_og(t) / S if og else 0.0) for t in T]
+        T, P1, P2, W1, W2 = simulate(P0, St, d, L, V1, V2, og, ogA, ogV)
+        Xi, Yi = ideal_sim(P0, St, V1 + V2, og, ogA, ogV)
+        t_id_curve = [max(Yi[min(range(len(Xi)), key=lambda i: abs(math.log(Xi[i]) - math.log(max(t, 1e-7))))], 1e-12)
+                      for t in T]
         l_p2.set_data(T, P2); l_p1.set_data(T, P1); l_id.set_data(T, t_id_curve)
         if og:
             l_w2.set_data(T, W2); l_w1.set_data(T, W1)
