@@ -148,12 +148,12 @@
 <div class="wrap">
   <div>
     <h1>Bottleneck-limited pumpdown: viscous vs. molecular flow</h1>
-    <div class="sub">A 10iC cryopump hangs off a small manifold, connected to the chamber you actually
-    care about through a narrow tube. Every run starts at 760 Torr: a rough pump takes the system down to
-    crossover, then the cryo valves in. Near atmosphere the tube conducts like a fire hose and the pump is the
-    limit; once the mean free path outgrows the tube bore, conductance collapses to a fixed geometric value
-    and the tube — not the pump — sets how fast the chamber empties. Neither pump offers a constant speed:
-    watch the delivered-speed curve bend as pressure falls.</div>
+    <div class="sub">An Edwards <b>nXDS10iC</b> dry scroll pump hangs off a small manifold, connected to the
+    chamber you actually care about through a narrow tube. Every run starts at 760 Torr and the pump runs all
+    the way to its own ultimate. Near atmosphere the tube conducts like a fire hose and the pump is the limit;
+    once the mean free path outgrows the tube bore, conductance collapses to a fixed geometric value and the
+    tube — not the pump — sets how fast the chamber empties. The pump's speed is not constant either: it holds
+    3.17 L/s down to about 0.1 Torr, then falls away to nothing at ultimate.</div>
   </div>
 
   <div class="app">
@@ -161,7 +161,7 @@
     <div class="card">
       <h2>System</h2>
       <div class="schemwrap">
-        <svg id="schem" viewBox="0 0 760 340" role="img" aria-label="Schematic: 10iC cryopump and rough pump, small manifold, bottleneck tube, medium chamber"></svg>
+        <svg id="schem" viewBox="0 0 760 340" role="img" aria-label="Schematic: nXDS10iC scroll pump, small manifold, bottleneck tube, medium chamber"></svg>
         <canvas id="parts"></canvas>
       </div>
       <div class="playbar">
@@ -171,8 +171,7 @@
           <div class="ruler" id="ruler"></div>
         </div>
         <span class="chip">t = <b id="tOut">0 s</b></span>
-        <span class="chip">stage: <b id="stgOut">–</b></span>
-        <span class="chip">pumping at <b id="rateOut">–</b></span>
+        <span class="chip">nXDS10iC pumping at <b id="rateOut">–</b></span>
         <span class="chip">delivered to chamber <b id="effOut">–</b></span>
         <span class="chip">playback <b id="spdOut">–</b></span>
         <span class="chip">regime: <b id="regOut">–</b></span>
@@ -198,14 +197,14 @@
     <!-- ============ right toolbar ============ -->
     <div class="sidebar">
       <div class="card">
-        <h2>Pump set — fixed</h2>
+        <h2>Pump — fixed</h2>
         <div class="hw">
-          <div class="hw-name">Cryopump model <b>10iC</b></div>
-          <div class="hw-line">3,000 L/s air · 9,000 L/s H₂O · 5,000 L/s H₂</div>
-          <div class="hw-line">max throughput 19 Torr·L/s (1,500 sccm)</div>
-          <div class="hw-line">crossover rating 300 Torr·L · ultimate 10⁻⁹ Torr</div>
-          <div class="hw-name" style="margin-top:8px">Rough pump <b>10 cfm</b></div>
-          <div class="hw-line">4.7 L/s from 760 Torr · blank-off 20 mTorr</div>
+          <div class="hw-name">Edwards <b>nXDS10iC</b> dry scroll</div>
+          <div class="hw-line">peak speed 11.4 m³/h = 6.7 cfm = 3.17 L/s</div>
+          <div class="hw-line">displacement 12.7 m³/h at 1,800 rpm</div>
+          <div class="hw-line" id="hwUlt">ultimate 7×10⁻³ mbar = 5.3×10⁻³ Torr</div>
+          <div class="hw-line">corrosion-resistant build; speed same as nXDS10i</div>
+          <div class="hw-line" style="margin-top:6px">start pressure fixed at 760 Torr</div>
         </div>
       </div>
       <div class="card">
@@ -214,23 +213,21 @@
       </div>
       <div class="card">
         <h2>Results</h2>
-        <div class="hero-lbl">Bottleneck slowdown to reach 10⁻⁶ Torr</div>
+        <div class="hero-lbl" id="heroLbl">Bottleneck slowdown to reach target</div>
         <div class="hero-val" id="tileSlow">–</div>
-        <div class="hero-note">vs. the same pump set bolted straight onto the chamber</div>
-        <div class="res"><span class="k">Time to 10⁻⁶ Torr, through bottleneck</span><span class="v" id="tileT">–</span></div>
+        <div class="hero-note">vs. the same nXDS10iC bolted straight onto the chamber</div>
+        <div class="res"><span class="k" id="kT">Time to target, through bottleneck</span><span class="v" id="tileT">–</span></div>
         <div class="res-note" id="tileTnote"></div>
-        <div class="res"><span class="k">Time to 10⁻⁶ Torr, no bottleneck</span><span class="v" id="tileTi">–</span></div>
-        <div class="res"><span class="k">Time spent roughing to crossover</span><span class="v" id="tileTx">–</span></div>
-        <div class="res-note" id="tileTxnote"></div>
-        <div class="res"><span class="k">Gas load dumped on the cryo at crossover</span><span class="v" id="tileQx">–</span></div>
-        <div class="res-note" id="tileQxnote"></div>
-        <div class="res"><span class="k">10iC speed at crossover</span><span class="v" id="tileSx">–</span></div>
+        <div class="res"><span class="k" id="kTi">Time to target, no bottleneck</span><span class="v" id="tileTi">–</span></div>
+        <div class="res"><span class="k">Pump speed at the target pressure</span><span class="v" id="tileSx">–</span></div>
         <div class="res-note" id="tileSxnote"></div>
+        <div class="res"><span class="k">Chamber base pressure reached</span><span class="v" id="tileBase">–</span></div>
+        <div class="res-note" id="tileBasenote"></div>
         <div class="res"><span class="k">Molecular conductance of tube</span><span class="v" id="tileC">–</span></div>
         <div class="res-note" id="tileCnote"></div>
-        <div class="res" id="rgaRow1" style="display:none"><span class="k">H₂O partial at RGA (manifold)</span><span class="v" id="tileRga">–</span></div>
-        <div class="res-note" id="rgaNote" style="display:none">at end of run; an RGA only operates below ~10⁻⁴ Torr</div>
-        <div class="res" id="rgaRow2" style="display:none"><span class="k">Chamber → RGA H₂O attenuation</span><span class="v" id="tileAtt">–</span></div>
+        <div class="res" id="rgaRow1" style="display:none"><span class="k">H₂O partial at pump inlet</span><span class="v" id="tileRga">–</span></div>
+        <div class="res-note" id="rgaNote" style="display:none">at end of run — note an RGA needs &lt;10⁻⁴ Torr, so it would sit downstream of a high-vacuum pump, not here</div>
+        <div class="res" id="rgaRow2" style="display:none"><span class="k">Chamber → inlet H₂O attenuation</span><span class="v" id="tileAtt">–</span></div>
       </div>
     </div>
   </div>
@@ -246,47 +243,46 @@
     <div><b>Molecular regime</b> (λ ≳ d): a molecule crosses the whole tube without meeting another molecule.
     There is no "flow" to push — each molecule wanders by wall bounces and only by chance finds the exit. Conductance
     collapses to a pressure-independent, purely geometric value <code>C_mol ≈ 12.1 · d³ / (L + 4d/3)</code>,
-    which for a narrow tube can be orders of magnitude below the pump speed. The cryopump can remove everything
+    which for a narrow tube can fall below the pump speed. The scroll pump can remove everything
     that arrives, but almost nothing arrives: <code>S_eff → C_mol</code>, no matter how big the pump is.
     That is why time-to-base scales so brutally with a small bore at high vacuum — and why d⁴ vs d³ matters
     far less than the loss of the pressure term.</div>
     <div>Mean free path for air at 20 °C: <code>λ = 5×10⁻³ / P</code> cm·Torr — the classic "5 microns at
     1 Torr". Regime boundaries drawn at Kn = λ/d of 0.01 (viscous) and 0.5 (molecular).</div>
 
-    <div><b>Neither pump has a constant speed, and the reasons differ.</b> Runs always start at 760 Torr, so a
-    cryopump cannot be the first pump — open a cold 10iC to atmosphere and you saturate its charcoal in
-    seconds. A 10 cfm rough pump takes the system down to the crossover setpoint, then valves out as the
-    hi-vac gate opens.</div>
-    <div><b>The rough pump</b> is a constant-displacement machine: 4.7 L/s essentially flat from atmosphere,
-    choking off as it nears its 20 mTorr blank-off, modelled as
-    <code>S = 4.7 · (1 − 0.02/P)</code>. That collapse is why you cross over at 50–150 mTorr rather than
-    grinding lower — below that the rougher has little left to give and backstreaming risk climbs.</div>
-    <div><b>The 10iC</b> is a cold surface, not a machine: its 3,000 L/s (air) is a capture-area number and
-    stays flat wherever gas arrives molecularly. What bends its curve is the refrigerator. Condensing gas
-    dumps heat on the 15 K array, and the cold head can only carry
-    <code>Q_max = 19 Torr·L/s</code> (1,500 sccm) before the array warms out of spec. So above
-    <code>P_max = Q_max/S = 6.3×10⁻³ Torr</code> the pump is heat-load limited and delivers
-    <code>S = 19/P</code> — at a 100 mTorr crossover that is 190 L/s, about 6 % of its rating. The 10iC only
-    reaches full speed once the chamber is already in the low 10⁻³ Torr decade.</div>
-    <div><b>Crossover is also a gas-quantity limit, not just a pressure.</b> The 10iC is rated for a 300 Torr·L
-    burst, so the ceiling on crossover pressure is <code>300/V</code> — a number that tightens as the chamber
-    grows. The results panel shows the actual Torr·L handed over against that budget.</div>
+    <div><b>The pump's speed is not a constant either.</b> A scroll pump is positive displacement: two
+    interleaved involutes, one fixed and one orbiting, trap crescents of gas at the rim and squeeze them
+    inward to the exhaust. The nXDS10iC sweeps 12.7 m³/h at 1,800 rpm, and delivers a peak
+    <b>11.4 m³/h = 6.7 cfm = 3.17 L/s</b>. But the tip seals are not perfect. Gas leaks back across the scroll
+    flanks at a rate set by the pressure difference across them, and as the inlet falls that back-leak becomes
+    a larger and larger fraction of what is being swept forward — until the two cancel and net speed reaches
+    zero. That is the ultimate pressure, and it is why the curve is modelled as
+    <code>S = 3.17 · (1 − P_ult/P)</code>: essentially flat from atmosphere down to ~0.1 Torr, then falling
+    off a cliff. At 20 mTorr the pump is already down to about a quarter of its rating.</div>
+    <div><b>Gas ballast trades ultimate for tolerance to condensables.</b> Bleeding air into the compression
+    stage keeps water vapour from condensing inside the pump, but it raises the ultimate from
+    7×10⁻³ mbar to 4×10⁻² mbar — the two figures Edwards publishes for ballast positions 0 and 1. With the
+    adhesive-H₂O source switched on, that trade is exactly the one you would be making in the lab.</div>
+    <div><b>This pump alone does not reach high vacuum.</b> Its floor is in the 10⁻³ Torr decade, so the model
+    targets the pressure at which you would valve in a turbo or cryo — 50–150 mTorr is standard crossover
+    practice, and roughing further is wasted time. Note that the mean free path at ultimate is already about
+    1 cm, so a narrow tube is in molecular flow well before the pump runs out.</div>
 
     <div class="fine">Model: air at 20 °C; two lumped volumes coupled by
-    C(P̄) = C_viscous + C_molecular (Knudsen-interpolation approximation). Pump set fixed: 10iC cryopump
-    (3,000 L/s air, 9,000 L/s H₂O, 19 Torr·L/s max throughput, 300 Torr·L crossover, 10⁻⁹ Torr ultimate)
-    behind a 10 cfm / 4.7 L/s rough pump with 20 mTorr blank-off. The throughput ceiling is a heat-load limit,
-    so it throttles all species together. Crossover is latched on the chamber gauge (or when the rougher
-    reaches blank-off, whichever comes first) and is treated as an instantaneous valve swap — a real crossover
-    has a finite valve-opening transient and a measurable second-stage temperature excursion. Speeds are
-    room-temperature molecular-flow ratings; the inlet-conductance rise through the transition regime, which
-    lifts real speed slightly just below P_max, is not modelled. Laminar viscous flow (no choked-flow
-    correction at the very start). With adhesive outgassing enabled, a 20 cm² H₂O source at 85 °C
+    C(P̄) = C_viscous + C_molecular (Knudsen-interpolation approximation). Pump fixed: Edwards nXDS10iC dry
+    scroll — peak speed 11.4 m³/h (6.7 cfm, 3.17 L/s), displacement 12.7 m³/h at 1,800 rpm, ultimate
+    7×10⁻³ mbar with gas ballast closed and 4×10⁻² mbar open. The "C" is the corrosion-resistant build
+    (Chemraz valve pads, stainless fittings); its speed and ultimate match the plain nXDS10i. Speed is applied
+    equally to both species, which is right for a displacement pump — it sweeps whatever is in front of it —
+    though in reality water is handled worse than air without ballast, and the ballast setting is treated here
+    as affecting only the ultimate. The <code>1 − P_ult/P</code> roll-off is the standard idealization of the
+    published curve, not a fit to it; real scroll curves also sag slightly near atmosphere. Laminar viscous
+    flow (no choked-flow correction at the very start). With adhesive outgassing enabled, a 20 cm² H₂O source at 85 °C
     (q(1 h) = 5×10⁻⁵ Torr·L/s/cm², decaying ∝ 1/t as adsorbed water depletes) feeds the chamber, and H₂O is
     tracked as its own species — same viscous conductance (bulk flow carries everything), molecular conductance
     scaled by √(29/18) ≈ 1.27 since C_mol ∝ v̄ ∝ 1/√M. Wall re-adsorption elsewhere is neglected, and the
-    cryo pumps H₂O on its 80 K frontal array at 9,000 L/s. Integrated with backward Euler on an adaptive
-    log-time grid.</div>
+    scroll pump sweeps H₂O at the same volumetric rate as air. Integrated with backward Euler on an
+    adaptive log-time grid.</div>
   </div>
 </div>
 
@@ -295,56 +291,34 @@
 /* ---------------- physics: air, 20 C; units cm, L, s, Torr ---------------- */
 const P_ATM = 760;        // every run starts at atmosphere — not a parameter
 const LAM = 5.0e-3;       // lambda*P, cm*Torr
-const TARGET = 1e-6;      // target pressure for the results panel, Torr
 const FW = Math.sqrt(29 / 18);   // molecular-speed factor for H2O vs air (v ~ 1/sqrt(M))
 const OG_A = 20, OG_Q1H = 5e-5;  // adhesive area cm^2; H2O outgassing rate at 85 C, 1 h, Torr*L/s/cm^2
 const Qog = t => OG_A * OG_Q1H * 3600 / Math.max(t, 60);  // total H2O throughput, ~1/t desorption decay
 
-/* --- the fixed pump set -------------------------------------------------
-   CRYO: 10iC, the 10-inch On-Board class. Rated speeds are molecular-flow
-   values; the pump is really a cold surface with a fixed capture area, so its
-   speed is flat wherever the gas arrives molecularly. What bends the curve is
-   the refrigerator: condensing gas dumps heat on the 15 K array, and past a
-   maximum throughput Qmax the array can no longer hold temperature. Above
-   Pmax = Qmax/Smax the pump is heat-load limited and S falls as Qmax/P.
-   ROUGH: 10 cfm dry pump, the capacity CTI specifies per On-Board cryopump.
-   Constant displacement until its blank-off pressure chokes it off.        */
-const CRYO = {
-  model: "10iC",
-  Sair: 3000,      // L/s, air / N2   (molecular-flow rated speed)
-  Sw:   9000,      // L/s, water vapour — the 80 K frontal array
-  Sh2:  5000,      // L/s, hydrogen (not modelled, quoted for reference)
-  Qmax: 19,        // Torr*L/s, max continuous throughput (1500 sccm Ar)
-  Xmax: 300,       // Torr*L, crossover gas-burst rating
-  Pu:   1e-9,      // Torr, ultimate
+/* --- the pump: Edwards nXDS10iC dry scroll -------------------------------
+   A positive-displacement machine, not a capture pump. It sweeps a fixed
+   volume per revolution (12.7 m3/h displacement at 1800 rpm), but the speed
+   you actually get is the peak 11.4 m3/h = 3.17 L/s, and that falls away as
+   the inlet approaches ultimate: the tip seals leak gas back across the scroll
+   flanks faster and faster relative to the shrinking amount being swept
+   forward. Net speed S = S_peak*(1 - Pu/P) — genuinely zero at ultimate.
+   "C" is the corrosion-resistant build (Chemraz valve pads, stainless
+   fittings); its speed and ultimate are identical to the plain nXDS10i.      */
+const MBAR = 0.7500617;    // Torr per mbar
+const PUMP = {
+  model: "nXDS10iC",
+  Speak: 11.4 / 3.6,       // L/s — 11.4 m3/h (6.7 cfm) peak pumping speed
+  disp:  12.7 / 3.6,       // L/s — 12.7 m3/h (7.5 cfm) swept displacement
+  rpm:   1800,
+  PuGB0: 7e-3  * MBAR,     // Torr, ultimate, gas ballast closed  (5.25e-3)
+  PuGB1: 4e-2  * MBAR,     // Torr, ultimate, gas ballast open    (3.00e-2)
 };
-const ROUGH = { cfm: 10, S: 4.72, Pb: 0.02 };  // 10 cfm = 4.72 L/s; 20 mTorr blank-off
 
-CRYO.Pmax = CRYO.Qmax / CRYO.Sair;   // 6.3e-3 Torr — above this the cryo throttles
+const pUlt = gb => (gb ? PUMP.PuGB1 : PUMP.PuGB0);
 
-/* Rough-pump speed at its inlet: flat displacement, rolling off as back-leakage
-   across the vanes eats the swept volume — a genuine loss of volumetric rate,
-   so it belongs in S. Zero at blank-off. */
-const sRough = P => Math.max(0, ROUGH.S * (1 - ROUGH.Pb / Math.max(P, 1e-12)));
-
-/* Cryo capture speeds for [air, water] at inlet partials, throttled by the
-   shared heat-load ceiling. The ultimate is NOT folded in here: for a cryopump
-   it is re-evaporation off the array, a back-leak, and enters as the Pu term in
-   the integrator. Keeping them apart means this stays the pump's real speed —
-   a 10iC at base pressure is still a 3,000 L/s pump. */
-function sCryo(Pa, Pw) {
-  const a0 = CRYO.Sair, w0 = CRYO.Sw;
-  const Q = a0 * Pa + w0 * Pw;
-  const k = Q > CRYO.Qmax ? CRYO.Qmax / Q : 1;
-  return [a0 * k, w0 * k, k];
-}
-
-/* speed offered to the manifold at this instant, whichever pump is valved in */
-function pumpSpeeds(crossed, Pa, Pw) {
-  if (crossed) return sCryo(Pa, Pw);
-  const s = sRough(Pa + Pw);
-  return [s, s, 1];
-}
+/* Net speed at the pump inlet. One curve, both species — a displacement pump
+   sweeps whatever is in front of it, so air and water get the same L/s. */
+const sPump = (P, gb) => Math.max(0, PUMP.Speak * (1 - pUlt(gb) / Math.max(P, 1e-12)));
 
 const mfp = P => LAM / P;                              // cm
 const condMol = (d, L) => 12.1 * d*d*d / (L + 1.333*d); // L/s, end-corrected
@@ -353,27 +327,23 @@ const cond    = (d, L, Pav) => condVis(d, L, Pav) + condMol(d, L);
 const knudsen = (P, d) => mfp(P) / d;
 const regime  = Kn => Kn > 0.5 ? "molecular" : (Kn < 0.01 ? "viscous" : "transitional");
 
-/* one backward-Euler step for one gas species. S = capture speed for this
-   species, held over the step; Pu = the pump's ultimate for it (back-leak);
-   Q = source into the chamber. */
-function beStep(P1, P2, C, Q, S, Pu, V1, V2, dt) {
+/* one backward-Euler step for one gas species. S = pump speed for this species,
+   held over the step; Q = source into the chamber. The ultimate is already
+   inside S (back-leakage past the tip seals is a real loss of swept volume),
+   so there is no separate back-leak term. */
+function beStep(P1, P2, C, Q, S, V1, V2, dt) {
   const a11 = 1 + dt*(C + S)/V1,  a12 = -dt*C/V1;
   const a21 = -dt*C/V2,           a22 = 1 + dt*C/V2;
-  const b1 = P1 + dt*S*Pu/V1,     b2 = P2 + dt*Q/V2;
+  const b1 = P1,                  b2 = P2 + dt*Q/V2;
   const det = a11*a22 - a12*a21;
   return [(b1*a22 - a12*b2)/det, (a11*b2 - a21*b1)/det];
 }
 
-/* Has the tool crossed over yet? Standard practice is to watch the chamber
-   gauge; the second clause is the real-world escape hatch — once the rougher
-   sits at blank-off it will never get you lower, so you cross over anyway. */
-const crossNow = (P2tot, P1tot, Px) => P2tot <= Px || P1tot <= ROUGH.Pb * 1.2;
-
 /* two-volume, two-species (air + outgassed H2O) pumpdown on an adaptive log grid.
-   Rough pump valved to the manifold until crossover, then the 10iC. */
+   One nXDS10iC on the manifold, running from atmosphere all the way down. */
 function simulate(p) {
   let P1a = P_ATM, P2a = P_ATM, P1w = 0, P2w = 0, t = 0, dt = 1e-7;
-  let crossed = false, tX = null, qX = 0, sX = 0;
+  const Pu = pUlt(p.gb);
   const T = [], A1 = [], A2 = [], W1 = [], W2 = [], SP = [];
   let lastRec = 0, steps = 0;
   const rec = s => {
@@ -382,52 +352,43 @@ function simulate(p) {
     W1.push(Math.max(P1w, 1e-12)); W2.push(Math.max(P2w, 1e-12));
     SP.push(Math.max(s, 1e-6));
   };
-  rec(sRough(P_ATM));
-  const tMax = p.og ? 1e6 : 1e9;   // with 1/t outgassing the decay never ends; cap at ~11 days
-  while (P2a + P2w > 2e-9 && t < tMax && steps < 60000) {
+  rec(sPump(P_ATM, p.gb));
+  const tMax = p.og ? 1e6 : 1e5;   // with 1/t outgassing the decay never ends
+  while (P2a + P2w > Pu * 1.02 && t < tMax && steps < 60000) {
     steps++;
-    if (!crossed && crossNow(P2a + P2w, P1a + P1w, p.Px)) {
-      crossed = true;
-      tX = Math.max(t, 1e-7);
-      qX = (P1a + P1w) * p.V1 + (P2a + P2w) * p.V2;   // Torr*L handed to the cryo
-      sX = sCryo(P1a, P1w)[0];
-    }
     const Cv = condVis(p.d, p.L, 0.5 * ((P1a + P1w) + (P2a + P2w)));  // viscous term uses mean total pressure
     const Cm = condMol(p.d, p.L);
     const Q = p.og ? Qog(t) : 0;
-    const [Sa, Sw] = pumpSpeeds(crossed, P1a, P1w);
-    const Pua = crossed ? CRYO.Pu : 0;   // rougher's blank-off already lives in its S
-    const na = beStep(P1a, P2a, Cv + Cm,      0, Sa, Pua, p.V1, p.V2, dt);
-    const nw = beStep(P1w, P2w, Cv + Cm * FW, Q, Sw, 0,   p.V1, p.V2, dt);
+    const S = sPump(P1a + P1w, p.gb);    // one speed, set by total inlet pressure
+    const na = beStep(P1a, P2a, Cv + Cm,      0, S, p.V1, p.V2, dt);
+    const nw = beStep(P1w, P2w, Cv + Cm * FW, Q, S, p.V1, p.V2, dt);
     const rel = Math.max(
       Math.abs(na[0] + nw[0] - (P1a + P1w)) / Math.max(P1a + P1w, 1e-10),
       Math.abs(na[1] + nw[1] - (P2a + P2w)) / Math.max(P2a + P2w, 1e-10));
     if (rel > 0.25 && dt > 1e-8) { dt *= 0.5; continue; }
     t += dt; [P1a, P2a] = na; [P1w, P2w] = nw;
-    if (t >= lastRec * 1.05) { rec(Sa); lastRec = t; }
+    if (t >= lastRec * 1.05) { rec(S); lastRec = t; }
     dt = Math.min(dt * 1.2, 0.02*t + 1e-7);
   }
-  rec(pumpSpeeds(crossed, P1a, P1w)[0]);
-  return { T, P1: A1, P2: A2, W1, W2, S: SP, tEnd: Math.max(t, 1e-6), tX, qX, sX };
+  rec(sPump(P1a + P1w, p.gb));
+  return { T, P1: A1, P2: A2, W1, W2, S: SP, tEnd: Math.max(t, 1e-6) };
 }
 
-/* the same pump set bolted straight onto one lumped volume — no bottleneck */
+/* the same pump bolted straight onto one lumped volume — no bottleneck */
 function simulateIdeal(p) {
-  const V = p.V1 + p.V2;
-  let Pa = P_ATM, Pw = 0, t = 0, dt = 1e-7, crossed = false;
+  const V = p.V1 + p.V2, Pu = pUlt(p.gb);
+  let Pa = P_ATM, Pw = 0, t = 0, dt = 1e-7;
   const X = [], Y = [];
   let lastRec = 0, steps = 0;
   const rec = () => { X.push(Math.max(t, 1e-7)); Y.push(Math.max(Pa + Pw, 1e-12)); };
   rec();
-  const tMax = p.og ? 1e6 : 1e9;
-  while (Pa + Pw > 2e-9 && t < tMax && steps < 60000) {
+  const tMax = p.og ? 1e6 : 1e5;
+  while (Pa + Pw > Pu * 1.02 && t < tMax && steps < 60000) {
     steps++;
-    if (!crossed && crossNow(Pa + Pw, Pa + Pw, p.Px)) crossed = true;
-    const [Sa, Sw] = pumpSpeeds(crossed, Pa, Pw);
-    const Pua = crossed ? CRYO.Pu : 0;
+    const S = sPump(Pa + Pw, p.gb);
     const Q = p.og ? Qog(t) : 0;
-    const na = (Pa + dt*Sa*Pua/V) / (1 + dt*Sa/V);
-    const nw = (Pw + dt*Q/V) / (1 + dt*Sw/V);
+    const na = Pa / (1 + dt*S/V);
+    const nw = (Pw + dt*Q/V) / (1 + dt*S/V);
     if (Math.abs(na + nw - (Pa + Pw)) / Math.max(Pa + Pw, 1e-10) > 0.25 && dt > 1e-8) { dt *= 0.5; continue; }
     t += dt; Pa = na; Pw = nw;
     if (t >= lastRec * 1.05) { rec(); lastRec = t; }
@@ -490,8 +451,8 @@ function fmtVal(v) {
 
 /* ---------------- controls (slider + typeable field) ---------------- */
 const PARAMS = [
-  { key:"Px", label:"Crossover pressure", unit:"Torr", lo:0.03, hi:10, def:0.1,
-    note:"rough pump hands off to the 10iC here — standard practice is 50–150 mTorr" },
+  { key:"Px", label:"Target pressure", unit:"Torr", lo:0.01, hi:10, def:0.1,
+    note:"where you would hand off to a high-vacuum pump — standard crossover practice is 50–150 mTorr" },
   { key:"d",  label:"Bottleneck diameter", unit:"mm", lo:0.2, hi:10, def:1, toDisp:v=>v*10, fromDisp:v=>v/10 },
   { key:"L",  label:"Bottleneck length", unit:"cm", lo:2, hi:30, def:10 },
   { key:"V1", label:"Manifold volume", unit:"L", lo:0.5, hi:20, def:2 },
@@ -530,6 +491,21 @@ for (const p of PARAMS) {
     }
     txt.blur();
     syncText();
+  });
+}
+/* gas-ballast toggle — the nXDS's two published ultimates */
+state.gb = false;
+{
+  const div = document.createElement("div");
+  div.className = "ctl";
+  div.innerHTML = `<label class="ck"><input type="checkbox" id="gbChk">
+      <span>Gas ballast open (position 1)<br><span class="fine">flushes condensables through
+      the scroll, at the cost of ultimate</span></span></label>
+    <div class="fine" style="margin-top:4px">ultimate 4×10⁻² mbar open vs 7×10⁻³ mbar closed</div>`;
+  ctlBox.appendChild(div);
+  div.querySelector("#gbChk").addEventListener("change", ev => {
+    state.gb = ev.target.checked;
+    recompute();
   });
 }
 /* outgassing toggle */
@@ -646,14 +622,24 @@ function makeChart(rootId, legId, cfg) {
                    "stroke-linejoin": "round", "stroke-linecap": "round",
                    ...(s.dash ? { "stroke-dasharray": s.dash } : {}) }, gData);
     }
-    /* vertical event markers (crossover) */
+    /* vertical event markers */
     for (const v of (M.vmarks || [])) {
       if (!(v.x > M.x0 && v.x < M.x1)) continue;
       const x = xPix(v.x);
-      el("line", { x1:x, y1:mT, x2:x, y2:H-mB, stroke:"var(--series-3)",
+      el("line", { x1:x, y1:mT, x2:x, y2:H-mB, stroke: v.color || "var(--series-3)",
                    "stroke-width":1.4, "stroke-dasharray":"4 4" }, gAnno);
-      const t = el("text", { x: x + 4, y: H-mB-5, "font-size":10, fill:"var(--series-3)" }, gAnno);
+      const t = el("text", { x: x + 4, y: H-mB-5, "font-size":10, fill: v.color || "var(--series-3)" }, gAnno);
       t.textContent = v.text;
+    }
+    /* horizontal reference levels (pump ultimate, target pressure) */
+    for (const h of (M.hlines || [])) {
+      if (!(h.y > M.y0 && h.y < M.y1)) continue;
+      const y = yPix(h.y);
+      el("line", { x1:mL, y1:y, x2:W-mR, y2:y, stroke: h.color || "var(--muted)",
+                   "stroke-width":1.2, "stroke-dasharray":"4 4" }, gAnno);
+      const t = el("text", { x: W-mR-4, y: y-4, "text-anchor":"end", "font-size":10,
+                             fill: h.color || "var(--muted)" }, gAnno);
+      t.textContent = h.text;
     }
     /* selective direct labels */
     for (const a of (M.labels || [])) {
@@ -743,63 +729,39 @@ function layout(p) {
   const v2 = { x: tube.x + tube.w, y: cy - s/2, w: s, h: s };
   return { pump, v1, tube, v2, cy, k: dpx / p.d };
 }
-/* bowtie valve symbol; `vert` for a vertical run of pipe */
-function valveSym(x, y, id, vert) {
-  const s = 8;
-  const d = vert
-    ? `M ${x-s} ${y-s} L ${x+s} ${y-s} L ${x-s} ${y+s} L ${x+s} ${y+s} Z`
-    : `M ${x-s} ${y-s} L ${x-s} ${y+s} L ${x+s} ${y-s} L ${x+s} ${y+s} Z`;
-  return el("path", { d, id, fill: "var(--surface-1)", stroke: line0(), "stroke-width": 1.6 }, schem);
-}
-const line0 = () => "var(--text-2)";
-
 function drawSchem(p) {
   geo = layout(p);
   const { pump, v1, tube, v2, cy } = geo;
   schem.innerHTML = "";
   const line = "var(--text-2)";
-  /* cryopump body */
+  /* scroll pump body */
   el("rect", { x: pump.x, y: pump.y, width: pump.w, height: pump.h, rx: 10,
                fill: "none", stroke: line, "stroke-width": 1.6 }, schem);
-  /* 80 K frontal louver facing the inlet — condenses water on arrival */
-  for (let i = 0; i < 7; i++) {
-    const y = pump.y + 13 + i * (pump.h - 26) / 6;
-    el("path", { d: `M ${pump.x+pump.w-32} ${y-5} L ${pump.x+pump.w-21} ${y} L ${pump.x+pump.w-32} ${y+5}`,
-                 fill: "none", stroke: "var(--series-1)", "stroke-width": 1.8,
-                 "stroke-linecap": "round", "stroke-linejoin": "round", opacity: 0.8 }, schem);
-  }
-  /* 15 K second-stage array on the cold finger — everything else freezes here */
-  el("line", { x1: pump.x+9, y1: cy, x2: pump.x+pump.w-46, y2: cy,
-               stroke: "var(--series-2)", "stroke-width": 1.6, opacity: 0.5 }, schem);
-  for (let i = 0; i < 4; i++) {
-    const y = pump.y + 27 + i * (pump.h - 54) / 3;
-    el("line", { x1: pump.x+18, y1: y, x2: pump.x+pump.w-46, y2: y,
-                 stroke: "var(--series-2)", "stroke-width": 2.4,
-                 "stroke-linecap": "round", opacity: 0.65 }, schem);
+  /* the two interleaved involutes — one fixed scroll, one orbiting, sweeping
+     crescents of gas from the rim inward to the exhaust at the centre */
+  const scx = pump.x + pump.w/2, scy = cy, turns = 3.1, rMax = Math.min(pump.w, pump.h)/2 - 13;
+  for (const [phase, col, op] of [[0, "var(--series-1)", 0.85], [Math.PI, "var(--series-2)", 0.65]]) {
+    let dPath = "";
+    for (let i = 0; i <= 160; i++) {
+      const th = i / 160 * turns * 2 * Math.PI;
+      const r = 5 + (rMax - 5) * th / (turns * 2 * Math.PI);
+      const x = scx + r * Math.cos(th + phase), y = scy + r * Math.sin(th + phase);
+      dPath += (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+    }
+    el("path", { d: dPath, fill: "none", stroke: col, "stroke-width": 2,
+                 "stroke-linecap": "round", opacity: op }, schem);
   }
   const snow = el("text", { x: pump.x+pump.w/2, y: pump.y-8, "text-anchor":"middle",
                             "font-size": 12, fill: "var(--text-2)" }, schem);
-  snow.textContent = CRYO.model + " cryopump";
+  snow.textContent = PUMP.model + " scroll";
   const slab = el("text", { x: pump.x+pump.w/2, y: pump.y+pump.h+18, "text-anchor":"middle",
-                            "font-size": 11.5, fill: "var(--muted)", id: "cryoLab" }, schem);
+                            "font-size": 11.5, fill: "var(--text-1)", id: "pumpLab" }, schem);
   slab.textContent = "–";
-  /* duct pump->manifold (wide, unrestricted) with the hi-vac gate valve */
+  const slab2 = el("text", { x: pump.x+pump.w/2, y: pump.y+pump.h+32, "text-anchor":"middle",
+                             "font-size": 10.5, fill: "var(--muted)", id: "pumpLab2" }, schem);
+  slab2.textContent = "";
+  /* duct pump->manifold (wide, unrestricted) */
   el("rect", { x: pump.x+pump.w, y: cy-22, width: 16, height: 44, fill: "none", stroke: line, "stroke-width": 1.4 }, schem);
-  valveSym(pump.x + pump.w + 8, cy, "gateV", false);
-  /* roughing pump hung off the manifold behind its own valve */
-  const rp = { x: v1.x + v1.w/2 - 42, y: 250, w: 84, h: 38 };
-  const stubTop = v1.y + v1.h - 4;
-  el("line", { x1: v1.x+v1.w/2, y1: stubTop, x2: v1.x+v1.w/2, y2: rp.y,
-               stroke: line, "stroke-width": 1.4 }, schem);
-  valveSym(v1.x + v1.w/2, (stubTop + rp.y) / 2, "roughV", true);
-  el("rect", { x: rp.x, y: rp.y, width: rp.w, height: rp.h, rx: 6,
-               fill: "none", stroke: line, "stroke-width": 1.6 }, schem);
-  const rl1 = el("text", { x: rp.x+rp.w/2, y: rp.y+16, "text-anchor":"middle",
-                           "font-size": 11, fill: "var(--text-2)" }, schem);
-  rl1.textContent = "rough pump";
-  const rl2 = el("text", { x: rp.x+rp.w/2, y: rp.y+30, "text-anchor":"middle",
-                           "font-size": 10.5, fill: "var(--muted)", id: "roughLab" }, schem);
-  rl2.textContent = "–";
   /* manifold */
   el("rect", { x: v1.x, y: v1.y, width: v1.w, height: v1.h, rx: 6, fill: "none", stroke: line, "stroke-width": 1.6 }, schem);
   const v1lab = el("text", { x: v1.x+v1.w/2, y: v1.y+v1.h-7, "text-anchor":"middle", "font-size": 10.5, fill: "var(--muted)" }, schem);
@@ -848,25 +810,17 @@ function drawSchem(p) {
     w2t.textContent = "";
   }
 }
-function updateSchemLive(P1, P2, W1, W2, crossed, Spump) {
+function updateSchemLive(P1, P2, W1, W2, Spump) {
   const t1 = document.getElementById("p1val"), t2 = document.getElementById("p2val");
   if (t1) t1.textContent = fmtP(P1);
   if (t2) t2.textContent = fmtP(P2);
   const w1t = document.getElementById("p1wt"), w2t = document.getElementById("p2wt");
-  if (w1t) w1t.textContent = "RGA H₂O " + fmtP(W1) + " Torr";
+  if (w1t) w1t.textContent = "H₂O " + fmtP(W1) + " Torr";
   if (w2t) w2t.textContent = "H₂O " + fmtP(W2) + " Torr";
-  /* valve states + live speed labels: exactly one pump is ever valved in */
-  const open = "var(--series-1)", shut = "var(--muted)";
-  const gv = document.getElementById("gateV"), rv = document.getElementById("roughV");
-  if (gv) { gv.setAttribute("stroke", crossed ? open : shut);
-            gv.setAttribute("fill", crossed ? open : "var(--surface-1)"); }
-  if (rv) { rv.setAttribute("stroke", crossed ? shut : open);
-            rv.setAttribute("fill", crossed ? "var(--surface-1)" : open); }
-  const cl = document.getElementById("cryoLab"), rl = document.getElementById("roughLab");
-  if (cl) { cl.textContent = crossed ? fmtS(Spump) + " L/s" : "valved out";
-            cl.setAttribute("fill", crossed ? "var(--text-1)" : "var(--muted)"); }
-  if (rl) { rl.textContent = crossed ? "valved out" : fmtS(Spump) + " L/s";
-            rl.setAttribute("fill", crossed ? "var(--muted)" : "var(--text-1)"); }
+  /* live speed under the pump, with how far it has fallen off peak */
+  const pl = document.getElementById("pumpLab"), pl2 = document.getElementById("pumpLab2");
+  if (pl) pl.textContent = fmtS(Spump) + " L/s";
+  if (pl2) pl2.textContent = Math.round(100 * Spump / PUMP.Speak) + "% of peak";
   /* λ scale bar in its own strip at the bottom of the schematic, same px-per-cm
      scale as the drawn tube; the "bore" tick marks the tube diameter for comparison */
   const g = document.getElementById("mfpbar");
@@ -1021,36 +975,44 @@ function recompute() {
   sim = simulate(state);
   ideal = simulateIdeal(state);
 
-  const Vtot = state.V1 + state.V2;
   const Cm = condMol(state.d, state.L);
-  const SeffFloor = 1 / (1/CRYO.Sair + 1/Cm);        // both pumps wide open, molecular flow
-  const tBn = timeToReach(sim.T, sim.P2, TARGET);
-  const tId = timeToReach(ideal.X, ideal.Y, TARGET);
+  const Pu = pUlt(state.gb);
+  const Sx = sPump(state.Px, state.gb);              // pump speed at the target pressure
+  const SeffX = 1 / (1/Math.max(Sx, 1e-9) + 1/cond(state.d, state.L, state.Px));
+  const tBn = timeToReach(sim.T, sim.P2, state.Px);
+  const tId = timeToReach(ideal.X, ideal.Y, state.Px);
+  const tgtTxt = fmtP(state.Px) + " Torr";
+  document.getElementById("heroLbl").textContent = "Bottleneck slowdown to reach " + tgtTxt;
+  document.getElementById("kT").textContent = "Time to " + tgtTxt + ", through bottleneck";
+  document.getElementById("kTi").textContent = "Time to " + tgtTxt + ", no bottleneck";
   document.getElementById("tileT").textContent = fmtTime(tBn);
-  document.getElementById("tileTnote").textContent =
-    tBn ? "S_eff at base ≈ " + fmtS(SeffFloor) + " L/s of the 10iC's " + fmtS(CRYO.Sair) + " L/s"
-        : "did not reach target";
+  document.getElementById("tileTnote").textContent = tBn
+    ? "S_eff there ≈ " + fmtS(SeffX) + " L/s of the pump's " + fmtS(Sx) + " L/s"
+    : (state.Px <= Pu ? "target is below the pump's ultimate — unreachable"
+                      : "did not reach target in the simulated window");
   document.getElementById("tileTi").textContent = fmtTime(tId);
   document.getElementById("tileSlow").textContent =
     (tBn && tId > 0) ? "×" + (tBn/tId >= 100 ? Math.round(tBn/tId).toLocaleString() : (tBn/tId).toPrecision(2)) : "–";
 
-  /* crossover readouts */
-  document.getElementById("tileTx").textContent = fmtTime(sim.tX);
-  document.getElementById("tileTxnote").textContent =
-    tBn && sim.tX ? Math.round(100 * sim.tX / tBn) + "% of the whole pumpdown is the 10 cfm rougher" : "";
-  const qFrac = sim.qX / CRYO.Xmax;
-  document.getElementById("tileQx").textContent = sim.qX.toPrecision(3) + " Torr·L";
-  document.getElementById("tileQxnote").textContent =
-    "of the 10iC's " + CRYO.Xmax + " Torr·L rating (" + Math.round(100*qFrac) + "%) — max crossover for this "
-    + fmtS(Vtot) + " L system is " + (CRYO.Xmax/Vtot).toPrecision(2) + " Torr";
-  document.getElementById("tileSx").textContent = fmtS(sim.sX) + " L/s";
+  document.getElementById("tileSx").textContent = fmtS(Sx) + " L/s";
   document.getElementById("tileSxnote").textContent =
-    "heat-load throttled from " + fmtS(CRYO.Sair) + " L/s; full speed only below "
-    + fmtP(CRYO.Pmax) + " Torr";
+    Math.round(100 * Sx / PUMP.Speak) + "% of the 3.17 L/s peak — the roll-off is back-leakage past the "
+    + "tip seals as the inlet nears the " + fmtP(Pu) + " Torr ultimate";
+
+  const Pbase = sim.P2[sim.P2.length - 1];
+  document.getElementById("tileBase").textContent = fmtP(Pbase) + " Torr";
+  const ballast = "gas ballast " + (state.gb ? "open" : "closed");
+  document.getElementById("tileBasenote").textContent =
+    Pbase > Pu * 1.1
+      ? "outgassing-limited — the H₂O source holds it above the " + fmtP(Pu) + " Torr ultimate (" + ballast + ")"
+      : "sitting at the pump's ultimate, " + fmtP(Pu) + " Torr (" + ballast + ")";
 
   document.getElementById("tileC").textContent = fmtS(Cm) + " L/s";
   document.getElementById("tileCnote").textContent =
     "vs " + fmtS(condVis(state.d, state.L, P_ATM)) + " L/s viscous at atmosphere";
+  document.getElementById("hwUlt").textContent = state.gb
+    ? "ultimate 4×10⁻² mbar = 3.0×10⁻² Torr (ballast open)"
+    : "ultimate 7×10⁻³ mbar = 5.3×10⁻³ Torr (ballast closed)";
   for (const id of ["rgaRow1", "rgaRow2", "rgaNote"])
     document.getElementById(id).style.display = state.og ? "" : "none";
   if (state.og) {
@@ -1072,37 +1034,42 @@ function recompute() {
     { name: "chamber H₂O", color: "var(--series-1)", dash: "2 3", X: sim.T, Y: sim.W2 },
     { name: "H₂O at RGA (manifold)", color: "var(--series-2)", dash: "2 3", X: sim.T, Y: sim.W1 });
   s1.push({ name: "no bottleneck (ideal)", color: "var(--series-3)", dash: "6 5", X: ideal.X, Y: ideal.Y });
+  const y0c1 = Math.min(Pu, state.Px) / 4;
   c1.draw({
-    x0, x1, y0: 6e-10, y1: P_ATM * 3,
+    x0, x1, y0: y0c1, y1: P_ATM * 3,
     bands: [
       { lo: pV, hi: 1e9, label: "viscous — conductance ∝ P", wash: false },
       { lo: pM, hi: pV, label: "transitional", wash: true },
       { lo: 0,  hi: pM, label: "molecular — conductance fixed", wash: false },
     ],
     series: s1,
-    vmarks: sim.tX ? [{ x: sim.tX, text: "crossover → 10iC" }] : [],
+    hlines: [
+      { y: Pu, text: "nXDS10iC ultimate", color: "var(--series-3)" },
+      { y: state.Px, text: "target", color: "var(--muted)" },
+    ],
     labels: (() => {
       const tMid = Math.sqrt(x0 * x1);
       const yI = interpLog(ideal.X, ideal.Y, tMid);
-      return yI > 6e-10 && yI < P_ATM
+      return yI > y0c1 && yI < P_ATM
         ? [{ x: tMid, y: yI, dy: -6, text: "ideal", anchor: "middle" }] : [];
     })(),
   });
   c1.setLegend(s1.map(s => ({ name: s.name, color: s.color, dash: s.dash })));
 
-  /* chart 2: pump speed and delivered speed vs pressure.
-     Above the crossover setpoint the rough pump is valved in; below it the
-     10iC — whose own speed is throughput-throttled until P < Qmax/Smax. */
+  /* chart 2: pump speed and delivered speed vs pressure. The nXDS holds peak
+     speed from atmosphere down to ~0.1 Torr, then rolls off to zero at ultimate. */
+  const x0c2 = Pu * 0.7;
   const Pg = [], Cg = [], Sg = [], Eg = [];
   for (let i = 0; i <= 300; i++) {
-    const P = 10 ** (-9 + i / 300 * (Math.log10(P_ATM) + 9));
+    const P = 10 ** (Math.log10(x0c2) + i / 300 * (Math.log10(P_ATM) - Math.log10(x0c2)));
     const C = cond(state.d, state.L, P);
-    const S = P > state.Px ? sRough(P) : sCryo(P, 0)[0];
-    Pg.push(P); Cg.push(C); Sg.push(Math.max(S, 1e-6)); Eg.push(1 / (1/Math.max(S, 1e-6) + 1/C));
+    const S = Math.max(sPump(P, state.gb), 1e-6);
+    Pg.push(P); Cg.push(C); Sg.push(S); Eg.push(1 / (1/S + 1/C));
   }
+  const SeffFloor = 1 / (1/PUMP.Speak + 1/Cm);   // both wide open, molecular flow
   c2.draw({
-    x0: 1e-9, x1: P_ATM, y0: Math.max(1e-2, Math.min(SeffFloor, ROUGH.S) / 10),
-    y1: Math.max(CRYO.Sair, Cm) * 40,
+    x0: x0c2, x1: P_ATM, y0: Math.max(1e-3, Math.min(SeffFloor, Cm) / 30),
+    y1: Math.max(PUMP.Speak, Cm) * 300,
     bands: [
       { lo: pV, hi: 1e9, label: "viscous", wash: false },
       { lo: pM, hi: pV, label: "transitional", wash: true },
@@ -1113,16 +1080,18 @@ function recompute() {
       { name: "pump speed S", color: "var(--muted)", dash: "6 5", X: Pg, Y: Sg },
       { name: "delivered to chamber S_eff", color: "var(--series-1)", X: Pg, Y: Eg },
     ],
-    vmarks: [{ x: state.Px, text: "crossover" }],
+    vmarks: [
+      { x: state.Px, text: "target", color: "var(--muted)" },
+      { x: Pu, text: "ultimate", color: "var(--series-3)" },
+    ],
     labels: [
-      { x: 3e-9, y: SeffFloor, dy: -7, text: "conductance-limited floor ≈ " + fmtS(SeffFloor) + " L/s" },
-      { x: 3e-9, y: CRYO.Sair, dy: -7, text: "10iC rated " + fmtS(CRYO.Sair) + " L/s" },
-      { x: CRYO.Pmax * 1.6, y: CRYO.Sair, dy: 13, text: "throughput-limited, S = 19/P" },
+      { x: 300, y: PUMP.Speak, dy: -7, text: "peak " + fmtS(PUMP.Speak) + " L/s", anchor: "end" },
+      { x: 300, y: Cm, dy: -7, text: "C_mol " + fmtS(Cm) + " L/s", anchor: "end" },
     ],
   });
   c2.setLegend([
     { name: "tube conductance C", color: "var(--series-2)" },
-    { name: "pump speed S (rougher, then 10iC)", color: "var(--muted)", dash: "5 4" },
+    { name: "nXDS10iC speed S", color: "var(--muted)", dash: "5 4" },
     { name: "delivered speed S_eff", color: "var(--series-1)" },
   ]);
 
@@ -1149,15 +1118,13 @@ function tick(force) {
   scrub.value = Math.round(u * 1000);
   const W1 = state.og ? interpLog(sim.T, sim.W1, t) : 0;
   const W2 = state.og ? interpLog(sim.T, sim.W2, t) : 0;
-  /* which pump is valved in right now, and what it is actually delivering */
-  const crossed = sim.tX != null && t >= sim.tX;
-  const Spump = interpLog(sim.T, sim.S, t);
+  /* what the pump is actually delivering right now */
+  const Spump = sPump(P1, state.gb);
   const Ceff = cond(state.d, state.L, 0.5*(P1+P2));
-  document.getElementById("stgOut").textContent =
-    crossed ? CRYO.model + " cryo" : "roughing (" + ROUGH.cfm + " cfm)";
-  document.getElementById("rateOut").textContent = fmtS(Spump) + " L/s";
+  document.getElementById("rateOut").textContent =
+    fmtS(Spump) + " L/s (" + Math.round(100 * Spump / PUMP.Speak) + "% of peak)";
   document.getElementById("effOut").textContent = fmtS(1/(1/Math.max(Spump,1e-6) + 1/Ceff)) + " L/s";
-  updateSchemLive(P1, P2, W1, W2, crossed, Spump);
+  updateSchemLive(P1, P2, W1, W2, Spump);
   c1.setCursor(t, 0);
   if (force) stepParticles(0.016, P1, P2);
 }
