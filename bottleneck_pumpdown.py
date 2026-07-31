@@ -39,6 +39,16 @@ TARGET = 1e-6    # high-vacuum target for the timing readout, Torr
 # Pmax = Qmax/S_rated it is throughput-limited and S falls as Qmax/P. It also
 # cannot run alone - its exhaust must stay below a critical backing pressure,
 # which is the roughing pump's job and is checked explicitly.
+#
+# Sources (mbar catalog values, converted to Torr here):
+#   Edwards nXDS brochure 3601-0088-01 (speed/displacement) and instruction
+#   manual A735-01-880 §2.2.3 Table 5 (ultimate 7e-3 mbar ballast closed,
+#   4e-2 mbar open; the gas ballast is a two-position knob, 0/1);
+#   Adixen ACP 15/28/40 data brochure (15 m3/h, ultimate 5e-2 mbar; manual gas
+#   ballast fitted but no ballast-open ultimate published);
+#   Edwards nEXT manual B800-00-880 (nEXT300D: critical backing 9.5 mbar N2,
+#   max continuous inlet flow 115 sccm forced-air / 95 sccm water-cooled,
+#   ultimate 8e-8 mbar on the ISO-K flange with a dry backing pump).
 MBAR = 0.7500617          # Torr per mbar
 SCCM = 0.0126656          # Torr*L/s per sccm
 
@@ -68,7 +78,7 @@ TURBOS = {
         Qmax=115 * SCCM,                      # Torr*L/s - 115 sccm, forced air
         QmaxWater=95 * SCCM,                  # Torr*L/s - 95 sccm, water cooled
         Pbackmax=9.5 * MBAR,                  # Torr - critical backing, N2 (7.13)
-        Pu=6e-8 * MBAR,                       # Torr, ultimate on a dry backing pump
+        Pu=8e-8 * MBAR,                       # Torr - catalog 8e-8 mbar (6e-8 Torr), ISO-K, dry backing
         rpm=60000,
     ),
 }
@@ -136,9 +146,9 @@ def cross_now(P2tot, P1tot, Px, rp, gb=False):
     will never get you lower, so you cross over anyway."""
     return P2tot <= Px or P1tot <= p_ult(rp, gb) * 1.2
 
-# Fixed timeline: every run spans the same 0.1 ms -> 20 days window so the time
+# Fixed timeline: every run spans the same 1 s -> 20 days window so the time
 # axis never rescales when parameters change.
-T_START = 1e-4
+T_START = 1.0
 T_END = 20 * 86400
 
 

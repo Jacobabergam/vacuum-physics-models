@@ -116,7 +116,9 @@
     padding: 4px 7px; margin-top: 1px;
   }
   .ctl select.sel:focus { outline: 1.5px solid var(--series-1); outline-offset: -1px; }
-  .ck { display: flex; gap: 8px; align-items: flex-start; color: var(--text-1) !important;
+  /* toggle rows: left-packed, unlike the space-between slider labels above */
+  label.ck { display: flex; justify-content: flex-start; text-align: left; gap: 8px;
+        align-items: flex-start; color: var(--text-1) !important;
         font-size: 13px !important; cursor: pointer; }
   .ck input[type=checkbox] { accent-color: var(--series-1); width: 15px; height: 15px; margin-top: 2px; }
 
@@ -341,8 +343,8 @@
     back-leakage across the seals grows as the inlet falls until it exactly cancels the swept volume. That
     cancellation <i>is</i> the ultimate, so the curve is <code>S = S_peak · (1 − P_ult/P)</code> — flat from
     atmosphere until roughly a decade above ultimate, then a cliff. The two options differ mostly in where
-    that cliff sits: the <b>nXDS10iC</b> (3.17 L/s, ultimate 7×10⁻³ mbar) is still at 95 % of peak at a
-    100 mTorr crossover, while the larger <b>ACP 15</b> (4.17 L/s, ultimate 5×10⁻² mbar) is already down to
+    that cliff sits: the <b>nXDS10iC</b> (3.17 L/s, ultimate 5.3×10⁻³ Torr) is still at 95 % of peak at a
+    100 mTorr crossover, while the larger <b>ACP 15</b> (4.17 L/s, ultimate 3.8×10⁻² Torr) is already down to
     62 % there. Bigger is not automatically faster at the pressure you care about.</div>
     <div><b>The turbo</b> is the mirror image. Its blades throw molecules downstream, so its 300 L/s is a
     capture number that stays flat wherever flow is molecular — it does not care how low the pressure gets.
@@ -354,17 +356,30 @@
     <div><b>The two stages are coupled, not independent.</b> Everything the turbo removes has to be swallowed
     by the rougher, so the foreline settles where <code>S_rough(P_fore) · P_fore = Q_turbo</code> — solved
     here by bisection, because the rougher's own speed depends on that pressure. The result is checked against
-    the nEXT300D's 9.5 mbar critical backing pressure: exceed it and the turbo stalls. At default geometry the
+    the nEXT300D's 7.1 Torr critical backing pressure: exceed it and the turbo stalls. At default geometry the
     peak foreline is about 0.47 Torr, some 7 % of budget, so either rougher backs this turbo comfortably.</div>
 
     <div class="fine">Model: air at 20 °C; two lumped volumes coupled by
-    C(P̄) = C_viscous + C_molecular (Knudsen-interpolation approximation). Hardware: Edwards nXDS10iC dry
-    scroll (peak 11.4 m³/h = 6.7 cfm = 3.17 L/s, displacement 12.7 m³/h at 1,800 rpm, ultimate 7×10⁻³ mbar
-    ballast closed / 4×10⁻² mbar open; the "C" is the corrosion-resistant build and matches the plain
-    nXDS10i) or Adixen/Pfeiffer ACP 15 multi-stage Roots (15 m³/h = 4.17 L/s, ultimate 5×10⁻² mbar — no
-    ballast-open figure is published, so the ballast toggle does nothing for it); Edwards nEXT300D compound
+    C(P̄) = C_viscous + C_molecular (Knudsen-interpolation approximation). Hardware — all figures converted
+    to Torr from the manufacturers' mbar catalog values: Edwards nXDS10iC dry
+    scroll (peak 11.4 m³/h = 6.7 cfm = 3.17 L/s, displacement 12.7 m³/h at 1,800 rpm; ultimate
+    5.3×10⁻³ Torr with gas ballast closed / 3.0×10⁻² Torr open — catalog 7×10⁻³ / 4×10⁻² mbar per the
+    <a href="https://www.idealvac.com/files/manuals/Edwards_nXDS_ScrollPumpManual.pdf">nXDS instruction manual
+    A735-01-880</a>, §2.2.3 Table 5, which also documents the two-position (0/1) ballast knob; speed and
+    displacement from the <a href="https://www.edwardsvacuum.com/content/dam/brands/edwards-vacuum/general-vacuum/downloads/dry-scroll-pumps/3601-0088-01-nXDS-brochure.pdf">nXDS
+    brochure</a>; the "C" is the corrosion-resistant build and matches the plain
+    <a href="https://www.idealvac.com/en-us/Edwards-nXDS10iC-Corrosive-Model-Oil-Free-Dry-Scroll-Vacuum-Pump-PN:-A73602983/pp/P105124">nXDS10i</a>)
+    or Adixen/Pfeiffer ACP 15 multi-stage Roots (15 m³/h = 8.2 cfm = 4.17 L/s, ultimate 3.8×10⁻² Torr =
+    37.5 mTorr, catalog 5×10⁻² mbar per the
+    <a href="https://www.idealvac.com/files/brochures/Adixen-Roots-Pumps-ACP-15-40_Data-Brochure.pdf">ACP 15/28/40
+    data brochure</a>; it has a manual gas ballast but no ballast-open ultimate is published, so the ballast
+    toggle does nothing for it); Edwards nEXT300D compound
     turbo (300 L/s N₂, 340 He, 280 H₂; 115 sccm max continuous inlet flow forced-air, 95 sccm water-cooled;
-    critical backing 9.5 mbar N₂; ultimate 6×10⁻⁸ mbar on a dry backing pump). The rougher's ultimate lives
+    critical backing 7.1 Torr N₂ (9.5 mbar); ultimate 6×10⁻⁸ Torr (8×10⁻⁸ mbar) on the ISO-K flange with a
+    dry backing pump — per the <a href="https://www.idealvac.com/files/manualsII/Edwards_nEXT_240.pdf">nEXT
+    instruction manual B800-00-880</a> and the
+    <a href="https://www.idealvac.com/en-us/Edwards-nEXT300D-Turbo-Vacuum-Pump-with-ISO-K-100-Inlet-Flange-300-ls-Pumping-Speed-Air-or-Water-Cooled-PN:-B82200100/pp/P106241">nEXT300D
+    listing</a>). The rougher's ultimate lives
     inside its speed because back-leakage past the seals is a real loss of swept volume; the turbo's is a
     back-leak term instead, so its reported speed stays 300 L/s at base rather than collapsing to zero. The
     turbo is given the same speed for H₂O as for N₂, which is close but not exact. Crossover is latched on the
@@ -546,9 +561,9 @@
 const P_ATM = 760;        // every run starts at atmosphere — not a parameter
 const TARGET = 1e-6;      // high-vacuum target for the results panel, Torr
 const LAM = 5.0e-3;       // lambda*P, cm*Torr
-/* fixed timeline: every run spans the same 0.1 ms -> 20 days window so the axis
+/* fixed timeline: every run spans the same 1 s -> 20 days window so the axis
    and the scrubber never rescale when parameters change */
-const T_START = 1e-4;             // s, left edge of the time axis / scrubber
+const T_START = 1;                // s, left edge of the time axis / scrubber
 const T_END   = 20 * 86400;       // s, 20 days
 const FW = Math.sqrt(29 / 18);   // molecular-speed factor for H2O vs air (v ~ 1/sqrt(M))
 /* Adhesive H2O source at 85 C — depleting Fickian reservoir.
@@ -634,7 +649,7 @@ const TURBOS = {
     Qmax: 115 * SCCM,               // Torr*L/s — 115 sccm continuous, forced air
     QmaxWater: 95 * SCCM,           // Torr*L/s — 95 sccm if water cooled
     Pbackmax: 9.5 * MBAR,           // Torr — critical backing pressure, N2 (7.13)
-    Pu: 6e-8 * MBAR,                // Torr, ultimate on a rotary/dry backing pump
+    Pu: 8e-8 * MBAR,                // Torr — catalog 8e-8 mbar (6e-8 Torr), ISO-K flange, dry backing
     rpm: 60000,
   },
 };
@@ -931,7 +946,8 @@ state.gb = false;
   div.innerHTML = `<label class="ck"><input type="checkbox" id="gbChk">
       <span>Gas ballast open (position 1)<br><span class="fine">flushes condensables through
       the scroll, at the cost of ultimate</span></span></label>
-    <div class="fine" style="margin-top:4px">ultimate 4×10⁻² mbar open vs 7×10⁻³ mbar closed</div>`;
+    <div class="fine" style="margin-top:4px">ultimate 3.0×10⁻² Torr open vs 5.3×10⁻³ Torr closed
+      (Edwards nXDS manual A735-01-880 Table 5 — a two-position knob, 0/1)</div>`;
   ctlBox.appendChild(div);
   div.querySelector("#gbChk").addEventListener("change", ev => {
     state.gb = ev.target.checked;
@@ -1177,7 +1193,7 @@ function makeChart(rootId, legId, cfg) {
 
 const c1 = makeChart("chart1", "leg1", {
   W: 1000, H: 460,
-  xLabel: "time (s) — fixed 0.1 ms to 20 days", yLabel: "pressure (Torr)", bandAxis: "y",
+  xLabel: "time (s) — fixed 1 s to 20 days", yLabel: "pressure (Torr)", bandAxis: "y",
   xTip: x => "t = " + fmtTime(x), yTip: y => fmtP(y) + " Torr",
 });
 const c2 = makeChart("chart2", "leg2", {
@@ -1435,9 +1451,8 @@ function playTime() { return T_START * Math.pow(T_END / T_START, u); }
 
 /* labeled log-time ruler under the scrubber, matching the chart's time axis */
 const RULER_ANCHORS = [
-  [1e-4, "0.1 ms"], [1e-3, "1 ms"], [1e-2, "10 ms"], [0.1, "0.1 s"], [1, "1 s"],
-  [10, "10 s"], [60, "1 min"], [600, "10 min"], [3600, "1 h"], [36000, "10 h"],
-  [86400, "1 d"], [864000, "10 d"], [T_END, "20 d"],
+  [1, "1 s"], [10, "10 s"], [60, "1 min"], [600, "10 min"], [3600, "1 h"],
+  [36000, "10 h"], [86400, "1 d"], [864000, "10 d"], [T_END, "20 d"],
 ];
 function buildRuler() {
   const r = document.getElementById("ruler");
