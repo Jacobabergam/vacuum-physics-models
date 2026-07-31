@@ -813,6 +813,16 @@ function makeChart(rootId, legId, cfg) {
     const yl = el("text", { x: 12, y: mT + (H-mT-mB)/2, "font-size":11.5, fill:"var(--text-2)",
                             transform: `rotate(-90 12 ${mT + (H-mT-mB)/2})`, "text-anchor":"middle" }, gGrid);
     yl.textContent = cfg.yLabel;
+    /* horizontal reference marks (e.g. the 10^-6 target) — a plain gridline is too easy
+       to misread when a curve bottoms out a fraction of a decade above it */
+    for (const m of (M.marks || [])) {
+      const y = yPix(m.y);
+      if (!(y >= mT && y <= H-mB)) continue;
+      el("line", { x1:mL, y1:y, x2:W-mR, y2:y, stroke:"var(--baseline)", "stroke-width":1.25,
+                   "stroke-dasharray":"5 4" }, gGrid);
+      const t = el("text", { x: mL+6, y: y-4, "font-size":10, fill:"var(--text-2)" }, gGrid);
+      t.textContent = m.text;
+    }
     /* series */
     for (const s of M.series) {
       let dPath = "", pen = false;
@@ -1169,12 +1179,17 @@ function recompute() {
   const SeffFloor = 1 / (1/state.St + 1/Cm);
   const tBn = timeToReach(sim.T, sim.P2, TARGET);
   const tId = timeToReach(ideal.X, ideal.Y, TARGET);
-  document.getElementById("tileT").textContent = fmtTime(tBn);
-  document.getElementById("tileTnote").textContent =
-    tBn ? "S_eff at base ≈ " + fmtS(SeffFloor) + " L/s of the " + fmtS(state.St) + " L/s turbo plateau" : "did not reach target";
+  /* the run is a finite window, so "no crossing" means "not yet" — report how far it actually
+     got rather than a bare dash, which reads as a contradiction against a curve that is still falling */
+  const nEnd = sim.T.length - 1, tRun = sim.T[nEnd], P2end = sim.P2[nEnd];
+  const fmtX = r => "×" + (r >= 100 ? Math.round(r).toLocaleString() : r.toPrecision(2));
+  document.getElementById("tileT").textContent = tBn ? fmtTime(tBn) : "> " + fmtTime(tRun);
+  document.getElementById("tileTnote").textContent = tBn
+    ? "S_eff at base ≈ " + fmtS(SeffFloor) + " L/s of the " + fmtS(state.St) + " L/s turbo plateau"
+    : "still at " + fmtP(P2end) + " Torr after " + fmtTime(tRun) + " — run ends before the target";
   document.getElementById("tileTi").textContent = fmtTime(tId);
   document.getElementById("tileSlow").textContent =
-    (tBn && tId > 0) ? "×" + (tBn/tId >= 100 ? Math.round(tBn/tId).toLocaleString() : (tBn/tId).toPrecision(2)) : "–";
+    tId > 0 ? (tBn ? fmtX(tBn/tId) : "> " + fmtX(tRun/tId)) : "–";
   document.getElementById("tileC").textContent = fmtS(Cm) + " L/s";
   document.getElementById("tileCnote").textContent =
     "vs " + fmtS(condVis(state.d, state.L, state.P0)) + " L/s viscous at start";
@@ -1223,6 +1238,7 @@ function recompute() {
       { lo: 0,  hi: pM, label: "molecular — conductance fixed", wash: false },
     ],
     series: s1,
+    marks: [{ y: TARGET, text: "target " + fmtP(TARGET) + " Torr" }],
     labels: (() => {
       const tMid = Math.sqrt(x0 * x1);
       const yI = interpLog(ideal.X, ideal.Y, tMid);
