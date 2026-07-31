@@ -110,9 +110,20 @@
   .ctl input.val:focus { outline: 1.5px solid var(--series-1); outline-offset: -1px; }
   .ctl .unit { color: var(--muted); font-size: 12px; min-width: 26px; }
   .ctl input[type=range] { width: 100%; accent-color: var(--series-1); }
+  .ctl select.sel {
+    width: 100%; background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text-1); font: inherit; font-weight: 600;
+    padding: 4px 7px; margin-top: 1px;
+  }
+  .ctl select.sel:focus { outline: 1.5px solid var(--series-1); outline-offset: -1px; }
   .ck { display: flex; gap: 8px; align-items: flex-start; color: var(--text-1) !important;
         font-size: 13px !important; cursor: pointer; }
   .ck input[type=checkbox] { accent-color: var(--series-1); width: 15px; height: 15px; margin-top: 2px; }
+
+  /* fixed-hardware card */
+  .hw-name { color: var(--text-1); font-size: 13px; }
+  .hw-name b { font-weight: 650; }
+  .hw-line { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
 
   /* results */
   .hero-lbl { color: var(--text-2); font-size: 12.5px; }
@@ -213,10 +224,13 @@
 <div class="wrap">
   <div>
     <h1>Bottleneck-limited pumpdown: viscous vs. molecular flow</h1>
-    <div class="sub">A turbopump hangs off a small manifold, connected to the chamber you actually
-    care about through a narrow tube. Near atmosphere the tube conducts like a fire hose and the pump is the
-    limit; once the mean free path outgrows the tube bore, conductance collapses to a fixed geometric value
-    and the tube — not the pump — sets how fast the chamber empties.</div>
+    <div class="sub">A roughing pump and a turbo hang off a small manifold, connected to the chamber you
+    actually care about through a narrow tube. Every run starts at 760 Torr: the rougher takes the system to
+    crossover, then the turbo valves in and the rougher moves to the foreline to back it. Near atmosphere the
+    tube conducts like a fire hose and the pump is the limit; once the mean free path outgrows the tube bore,
+    conductance collapses to a fixed geometric value and the tube — not the pump — sets how fast the chamber
+    empties. <b>Neither pump has a constant speed, and there is nowhere to type one in</b> — pick the hardware
+    and the model reads its speed off that pump's own curve at the current pressure.</div>
   </div>
 
   <div class="app">
@@ -224,7 +238,7 @@
     <div class="card">
       <h2>System</h2>
       <div class="schemwrap">
-        <svg id="schem" viewBox="0 0 760 300" role="img" aria-label="Schematic: turbopump, small manifold, bottleneck tube, medium chamber"></svg>
+        <svg id="schem" viewBox="0 0 760 340" role="img" aria-label="Schematic: turbo and roughing pump, small manifold, bottleneck tube, medium chamber"></svg>
         <canvas id="parts"></canvas>
       </div>
       <div class="playbar">
@@ -236,6 +250,10 @@
           <button id="play">Play</button>
           <div class="chips">
             <span class="chip">t = <b id="tOut">0 s</b></span>
+            <span class="chip">stage: <b id="stgOut">–</b></span>
+            <span class="chip">pumping at <b id="rateOut">–</b></span>
+            <span class="chip">foreline <b id="foreOut">–</b></span>
+            <span class="chip">delivered to chamber <b id="effOut">–</b></span>
             <span class="chip">playback <b id="spdOut">–</b></span>
             <span class="chip">regime: <b id="regOut">–</b></span>
             <span class="chip">mean free path <b id="mfpOut">–</b> vs bore <b id="dOut">–</b></span>
@@ -262,6 +280,14 @@
     <!-- ============ right toolbar ============ -->
     <div class="sidebar">
       <div class="card">
+        <h2>Pump set</h2>
+        <div id="hardware"></div>
+        <div class="hw-line" style="margin-top:8px">
+          Speed is read off the selected pump's own curve at the current
+          pressure — there is no speed to type in. Start pressure fixed at 760 Torr.
+        </div>
+      </div>
+      <div class="card">
         <h2>Parameters</h2>
         <div id="controls"></div>
       </div>
@@ -269,15 +295,23 @@
         <h2>Results</h2>
         <div class="hero-lbl">Bottleneck slowdown to reach 10⁻⁶ Torr</div>
         <div class="hero-val" id="tileSlow">–</div>
-        <div class="hero-note">vs. the same pump bolted straight onto the chamber</div>
+        <div class="hero-note">vs. the same pump set bolted straight onto the chamber</div>
         <div class="res"><span class="k">Time to 10⁻⁶ Torr, through bottleneck</span><span class="v" id="tileT">–</span></div>
         <div class="res-note" id="tileTnote"></div>
         <div class="res"><span class="k">Time to 10⁻⁶ Torr, no bottleneck</span><span class="v" id="tileTi">–</span></div>
+        <div class="res"><span class="k">Time spent roughing to crossover</span><span class="v" id="tileTx">–</span></div>
+        <div class="res-note" id="tileTxnote"></div>
+        <div class="res"><span class="k">Turbo speed at crossover</span><span class="v" id="tileSx">–</span></div>
+        <div class="res-note" id="tileSxnote"></div>
+        <div class="res"><span class="k">Peak foreline pressure</span><span class="v" id="tileFore">–</span></div>
+        <div class="res-note" id="tileForenote"></div>
+        <div class="res"><span class="k">Chamber base pressure reached</span><span class="v" id="tileBase">–</span></div>
+        <div class="res-note" id="tileBasenote"></div>
         <div class="res"><span class="k">Molecular conductance of tube</span><span class="v" id="tileC">–</span></div>
         <div class="res-note" id="tileCnote"></div>
-        <div class="res" id="rgaRow1" style="display:none"><span class="k">H₂O partial at RGA (manifold)</span><span class="v" id="tileRga">–</span></div>
-        <div class="res-note" id="rgaNote" style="display:none">at end of run; an RGA only operates below ~10⁻⁴ Torr</div>
-        <div class="res" id="rgaRow2" style="display:none"><span class="k">Chamber → RGA H₂O attenuation</span><span class="v" id="tileAtt">–</span></div>
+        <div class="res" id="rgaRow1" style="display:none"><span class="k">H₂O partial at pump inlet</span><span class="v" id="tileRga">–</span></div>
+        <div class="res-note" id="rgaNote" style="display:none">at end of run — note an RGA needs &lt;10⁻⁴ Torr, so it would sit downstream of a high-vacuum pump, not here</div>
+        <div class="res" id="rgaRow2" style="display:none"><span class="k">Chamber → inlet H₂O attenuation</span><span class="v" id="tileAtt">–</span></div>
       </div>
     </div>
   </div>
@@ -293,23 +327,51 @@
     <div><b>Molecular regime</b> (λ ≳ d): a molecule crosses the whole tube without meeting another molecule.
     There is no "flow" to push — each molecule wanders by wall bounces and only by chance finds the exit. Conductance
     collapses to a pressure-independent, purely geometric value <code>C_mol ≈ 12.1 · d³ / (L + 4d/3)</code>,
-    which for a narrow tube can be orders of magnitude below the pump speed. The turbopump can remove everything
+    which for a narrow tube falls far below the pump speed. The turbo can remove everything
     that arrives, but almost nothing arrives: <code>S_eff → C_mol</code>, no matter how big the pump is.
     That is why time-to-base scales so brutally with a small bore at high vacuum — and why d⁴ vs d³ matters
     far less than the loss of the pressure term.</div>
     <div>Mean free path for air at 20 °C: <code>λ = 5×10⁻³ / P</code> cm·Torr — the classic "5 microns at
     1 Torr". Regime boundaries drawn at Kn = λ/d of 0.01 (viscous) and 0.5 (molecular).</div>
+
+    <div><b>Neither pump offers a constant speed, and the reasons are opposites.</b> Runs start at 760 Torr,
+    so a turbo cannot be first — its blades only work in molecular flow. The rougher takes the chamber to the
+    crossover setpoint, then the turbo valves in and the rougher is repurposed as its backing pump.</div>
+    <div><b>The roughing pumps</b> are positive displacement: they sweep a fixed volume per revolution, but
+    back-leakage across the seals grows as the inlet falls until it exactly cancels the swept volume. That
+    cancellation <i>is</i> the ultimate, so the curve is <code>S = S_peak · (1 − P_ult/P)</code> — flat from
+    atmosphere until roughly a decade above ultimate, then a cliff. The two options differ mostly in where
+    that cliff sits: the <b>nXDS10iC</b> (3.17 L/s, ultimate 7×10⁻³ mbar) is still at 95 % of peak at a
+    100 mTorr crossover, while the larger <b>ACP 15</b> (4.17 L/s, ultimate 5×10⁻² mbar) is already down to
+    62 % there. Bigger is not automatically faster at the pressure you care about.</div>
+    <div><b>The turbo</b> is the mirror image. Its blades throw molecules downstream, so its 300 L/s is a
+    capture number that stays flat wherever flow is molecular — it does not care how low the pressure gets.
+    What bends its curve is throughput: rotor and drag stage can only shift
+    <code>Q_max = 115 sccm = 1.46 Torr·L/s</code>, so above
+    <code>P_max = Q_max/S = 4.9×10⁻³ Torr</code> it is throughput-limited to <code>S = Q_max/P</code>. At a
+    100 mTorr crossover that is roughly 33 L/s, about a tenth of its rating. The turbo only wakes up properly
+    once the chamber is already in the low 10⁻³ decade.</div>
+    <div><b>The two stages are coupled, not independent.</b> Everything the turbo removes has to be swallowed
+    by the rougher, so the foreline settles where <code>S_rough(P_fore) · P_fore = Q_turbo</code> — solved
+    here by bisection, because the rougher's own speed depends on that pressure. The result is checked against
+    the nEXT300D's 9.5 mbar critical backing pressure: exceed it and the turbo stalls. At default geometry the
+    peak foreline is about 0.47 Torr, some 7 % of budget, so either rougher backs this turbo comfortably.</div>
+
     <div class="fine">Model: air at 20 °C; two lumped volumes coupled by
-    C(P̄) = C_viscous + C_molecular (Knudsen-interpolation approximation); the pump is a two-stage
-    Edwards station with pressure-dependent speed S(P): an <b>nXDS10iC dry scroll</b> for roughing (peak
-    11.4 m³/h = 3.17 L/s, ultimate 7×10⁻³ mbar — note the "10iC" is the scroll, not a turbo) handing off near
-    ~0.5–1 Torr to an <b>nEXT85-class turbo</b> (84 L/s N₂ plateau at DN63, critical backing 18 mbar; the
-    Turbo-plateau slider rescales this curve). S(P) = max(turbo, scroll) at the manifold; plateau/ultimate/backing
-    anchors are catalog values (<a href="https://www.lesker.com/newweb/vacuum_pumps/pdf/brochures/next_turbo_brochure.pdf">nEXT
-    brochure</a>, <a href="https://ptbsales.com/edwards-nxds10i-rebuilt.html">nXDS10i specs</a>,
-    <a href="https://www.idealvac.com/en-us/Edwards-nXDS10iC-Corrosive-Model-Oil-Free-Dry-Scroll-Vacuum-Pump-PN:-A73602983/pp/P105124">nXDS10iC</a>)
-    while the roll-off shapes between anchors are digitized typical characteristics (approximate). Idealized
-    10⁻⁹ Torr ultimate; laminar viscous flow (no choked-flow correction at the very start). With adhesive outgassing enabled, an epoxy water reservoir
+    C(P̄) = C_viscous + C_molecular (Knudsen-interpolation approximation). Hardware: Edwards nXDS10iC dry
+    scroll (peak 11.4 m³/h = 6.7 cfm = 3.17 L/s, displacement 12.7 m³/h at 1,800 rpm, ultimate 7×10⁻³ mbar
+    ballast closed / 4×10⁻² mbar open; the "C" is the corrosion-resistant build and matches the plain
+    nXDS10i) or Adixen/Pfeiffer ACP 15 multi-stage Roots (15 m³/h = 4.17 L/s, ultimate 5×10⁻² mbar — no
+    ballast-open figure is published, so the ballast toggle does nothing for it); Edwards nEXT300D compound
+    turbo (300 L/s N₂, 340 He, 280 H₂; 115 sccm max continuous inlet flow forced-air, 95 sccm water-cooled;
+    critical backing 9.5 mbar N₂; ultimate 6×10⁻⁸ mbar on a dry backing pump). The rougher's ultimate lives
+    inside its speed because back-leakage past the seals is a real loss of swept volume; the turbo's is a
+    back-leak term instead, so its reported speed stays 300 L/s at base rather than collapsing to zero. The
+    turbo is given the same speed for H₂O as for N₂, which is close but not exact. Crossover is latched on the
+    chamber gauge (or when the rougher hits its own ultimate) and treated as an instantaneous valve swap; a
+    real crossover has a finite valve transient and a turbo spin-up. The <code>1 − P_ult/P</code> roll-off is
+    the standard idealization of the published rougher curves, not a fit to digitized points. Laminar viscous
+    flow (no choked-flow correction at the very start). With adhesive outgassing enabled, an epoxy water reservoir
     at 85 °C feeds the chamber — set its <b>exposed area A</b> and <b>volume V</b> with the sliders. Flux per unit
     area is the diffusion-limited (Fickian) form <code>q(t) = c₀·√(D/πt)·e^(−t/τ₁)</code> with
     c₀ = 1 wt % H₂O × 1.15 g/cm³ ≈ 11.7 Torr·L per cm³ of adhesive (1 mg H₂O ≈ 1.02 Torr·L),
@@ -328,7 +390,7 @@
     ~2 h at 85 °C) and the <i>unheated</i> manifold's 1/t tail injected on the pump side — which is why the
     RGA water background outlives the chamber's own dry-down. H₂O is tracked as its own species — same viscous conductance (bulk flow carries everything), molecular conductance
     scaled by √(29/18) ≈ 1.27 since C_mol ∝ v̄ ∝ 1/√M. Wall re-adsorption elsewhere is neglected, and the
-    turbo is assumed to pump H₂O at full speed. With the air-leak source enabled, a constant throughput Q enters the chamber and the pump-down flattens onto the floor P = Q/S_eff — constant-forever floor vs slowly-falling floor is the classic leak-vs-outgassing discriminator (see the leak-diagnosis process doc in analysis/). Integrated with backward Euler on an adaptive log-time grid; with outgassing enabled the run extends to 10⁷ s ≈ 116 days.</div>
+    turbo is assumed to pump H₂O at its N₂ speed. With the air-leak source enabled, a constant throughput Q enters the chamber and the pump-down flattens onto the floor P = Q/S_eff — constant-forever floor vs slowly-falling floor is the classic leak-vs-outgassing discriminator (see the leak-diagnosis process doc in analysis/). Integrated with backward Euler on an adaptive log-time grid; every run spans the same fixed 20-day window.</div>
   </div>
 
   <!-- ================= documentation block (added 2026-07-30, generated from dewar_vacuum_model v0.2) ================= -->
@@ -481,9 +543,9 @@
 <script>
 "use strict";
 /* ---------------- physics: air, 20 C; units cm, L, s, Torr ---------------- */
-const PU = 1e-9;          // turbopump ultimate pressure, Torr
+const P_ATM = 760;        // every run starts at atmosphere — not a parameter
+const TARGET = 1e-6;      // high-vacuum target for the results panel, Torr
 const LAM = 5.0e-3;       // lambda*P, cm*Torr
-const TARGET = 1e-6;      // target pressure for the results panel, Torr
 /* fixed timeline: every run spans the same 0.1 ms -> 20 days window so the axis
    and the scrubber never rescale when parameters change */
 const T_START = 1e-4;             // s, left edge of the time axis / scrubber
@@ -509,34 +571,6 @@ const Qog = (t, A, V) => {
   return A * OG_C0 * Math.sqrt(OG_D85 / (Math.PI*tt)) * Math.exp(-tt / ogTau1(A, V));
 };
 
-/* ---- Edwards pump station (defaults; sources in the model note) ----
-   Roughing: Edwards nXDS10iC dry scroll — peak 11.4 m3/h = 3.17 L/s, ultimate 7e-3 mbar
-             (5.3e-3 Torr). Anchors from the Edwards catalog; intermediate points digitized
-             from the typical nXDS speed curve (approximate).
-   High-vac: Edwards nEXT85 turbo, DN63 — 84 L/s N2 plateau, critical backing 18 mbar,
-             recommended backing pump nXDS-class. Plateau + backing anchors from the nEXT
-             brochure; the high-pressure roll-off is a digitized typical turbo characteristic.
-   Station speed at the manifold: S(P) = max(S_turbo, S_scroll) — bypass roughing, then
-   hand-off to the turbo near ~0.5-1 Torr. Note the nXDS10iC is the SCROLL (roughing) pump,
-   not a turbo. Units below: [Torr, L/s]. */
-const SCROLL_PTS = [[760,2.6],[100,3.0],[10,3.17],[1,3.1],[0.3,2.8],[0.1,2.3],
-                    [0.03,1.4],[0.01,0.5],[5.25e-3,1e-4]];
-const TURBO_PTS  = [[1e-9,84],[7.5e-4,84],[2.5e-3,80],[7.5e-3,68],[2.5e-2,47],
-                    [7.5e-2,26],[0.25,11],[0.75,3.5],[2.5,1.0],[7.5,0.25],[13.5,0.05]];
-const S_TURBO0 = 84;   // catalog plateau, L/s N2 — the "Turbo plateau" slider rescales this
-function interpTable(pts, P) {
-  if (P <= pts[0][0]) return pts[0][1];
-  if (P >= pts[pts.length-1][0]) return pts[pts.length-1][1];
-  for (let i = 1; i < pts.length; i++) if (P <= pts[i][0]) {
-    const f = (Math.log(P) - Math.log(pts[i-1][0])) / (Math.log(pts[i][0]) - Math.log(pts[i-1][0]));
-    return Math.exp(Math.log(pts[i-1][1]) + f * (Math.log(pts[i][1]) - Math.log(pts[i-1][1])));
-  }
-  return pts[pts.length-1][1];
-}
-/* scroll table is descending in usage order — store ascending for interp */
-const SCROLL_ASC = SCROLL_PTS.slice().reverse();
-const pumpS = (P, scale) => Math.max(interpTable(TURBO_PTS, P) * scale, interpTable(SCROLL_ASC, P));
-
 /* Wall-water sources (both are H2O, different kinetics and injection points).
    (a) Chamber/dewar walls, heated with the article to 85 C: ~3 monolayers of adsorbed
        water on A_DW of metal (3.05e-5 Torr*L/cm^2 per monolayer) drains as a fast pool —
@@ -552,6 +586,109 @@ const DW_TAU = 1800;                    // s
 const Qdw  = t => DW_I0 / DW_TAU * Math.exp(-t / DW_TAU);
 const Qman = t => A_MAN * 2.2e-9 * 3600 / Math.max(t, 60);
 
+/* ================= the pump set =========================================
+   Speed is never typed in. Pick the hardware; the model reads the speed off
+   that pump's own curve at whatever pressure it currently sees.
+
+   ROUGHING PUMPS are positive displacement. They sweep a fixed volume per
+   revolution, but back-leakage across the seals grows as the inlet falls,
+   until it cancels the swept volume — that is the ultimate. Both are dry:
+     S(P) = S_peak * (1 - Pu/P)
+   flat from atmosphere until roughly a decade above ultimate, then a cliff.
+
+   The TURBO is not displacement at all. Its blades throw molecules downstream,
+   so speed is a capture number — flat wherever flow is molecular. What bends
+   its curve is throughput: the rotor and its drag stage can only shift so much
+   gas before the foreline backs up, so above P_max = Q_max/S_rated the pump is
+   throughput-limited and S falls as Q_max/P. It also cannot run alone: its
+   exhaust has to stay below a critical backing pressure, which is the roughing
+   pump's job and is checked explicitly below.                              */
+const MBAR = 0.7500617;      // Torr per mbar
+const SCCM = 0.0126656;      // Torr*L/s per sccm
+
+const ROUGHERS = {
+  nxds10ic: {
+    model: "nXDS10iC", make: "Edwards", kind: "dry scroll",
+    Speak: 11.4 / 3.6,       // L/s — 11.4 m3/h (6.7 cfm) peak pumping speed
+    disp:  12.7 / 3.6,       // L/s — 12.7 m3/h (7.5 cfm) swept displacement
+    rpm:   1800,
+    PuGB0: 7e-3 * MBAR,      // Torr, ultimate, gas ballast closed (5.25e-3)
+    PuGB1: 4e-2 * MBAR,      // Torr, ultimate, gas ballast open   (3.00e-2)
+    note:  "corrosion-resistant build; speed and ultimate as nXDS10i",
+  },
+  acp15: {
+    model: "ACP 15", make: "Adixen/Pfeiffer", kind: "multi-stage Roots",
+    Speak: 15 / 3.6,         // L/s — 15 m3/h (8.2 cfm) nominal
+    disp:  15 / 3.6,
+    rpm:   null,
+    PuGB0: 5e-2 * MBAR,      // Torr, ultimate 37.5 mTorr (5e-2 mbar)
+    PuGB1: null,             // no published ballast-open figure
+    note:  "frictionless Roots module, no ballast-open ultimate published",
+  },
+};
+
+const TURBOS = {
+  next300d: {
+    model: "nEXT300D", make: "Edwards", kind: "compound turbo + drag stage",
+    Sn2: 300, She: 340, Sh2: 280,   // L/s
+    Qmax: 115 * SCCM,               // Torr*L/s — 115 sccm continuous, forced air
+    QmaxWater: 95 * SCCM,           // Torr*L/s — 95 sccm if water cooled
+    Pbackmax: 9.5 * MBAR,           // Torr — critical backing pressure, N2 (7.13)
+    Pu: 6e-8 * MBAR,                // Torr, ultimate on a rotary/dry backing pump
+    rpm: 60000,
+  },
+};
+
+const rougher = k => ROUGHERS[k] || ROUGHERS.nxds10ic;
+const turbo   = k => TURBOS[k]   || TURBOS.next300d;
+
+/* the selected rougher's ultimate, honouring gas ballast where published */
+function pUlt(p) {
+  const R = rougher(p.rp);
+  return (p.gb && R.PuGB1 != null) ? R.PuGB1 : R.PuGB0;
+}
+
+/* Roughing-pump speed at its own inlet. One curve for both species — a
+   displacement pump sweeps whatever is in front of it. */
+function sRough(P, p) {
+  const R = rougher(p.rp);
+  return Math.max(0, R.Speak * (1 - pUlt(p) / Math.max(P, 1e-12)));
+}
+
+/* Turbo capture speed for [air, water]. The throughput ceiling is a rotor/drag
+   limit shared by everything in the gas, so it throttles both species alike.
+   The ultimate is left out of S and enters as a back-leak in the integrator,
+   so this stays the pump's real speed rather than collapsing to zero at base. */
+function sTurbo(Pa, Pw, p) {
+  const T = turbo(p.tp);
+  const a0 = T.Sn2, w0 = T.Sn2;   // turbos pump H2O at about their N2 speed
+  const Q = a0 * Pa + w0 * Pw;
+  const k = Q > T.Qmax ? T.Qmax / Q : 1;
+  return [a0 * k, w0 * k, k];
+}
+
+/* Foreline pressure: the rougher must swallow the turbo's throughput, and it
+   settles where its own speed curve delivers exactly that. Solved by bisection
+   because S_rough itself depends on pressure. Returns null if the rougher
+   simply cannot take the load. */
+function foreline(Q, p) {
+  if (Q <= 0) return pUlt(p);
+  let lo = pUlt(p) * 1.0001, hi = 800;
+  if (sRough(hi, p) * hi < Q) return null;      // beyond the rougher entirely
+  for (let i = 0; i < 60; i++) {
+    const mid = Math.sqrt(lo * hi);
+    (sRough(mid, p) * mid < Q ? lo = mid : hi = mid);
+  }
+  return Math.sqrt(lo * hi);
+}
+
+/* speed offered to the manifold right now, whichever pump is valved in */
+function pumpSpeeds(crossed, Pa, Pw, p) {
+  if (crossed) return sTurbo(Pa, Pw, p);
+  const s = sRough(Pa + Pw, p);
+  return [s, s, 1];
+}
+
 const mfp = P => LAM / P;                              // cm
 const condMol = (d, L) => 12.1 * d*d*d / (L + 1.333*d); // L/s, end-corrected
 const condVis = (d, L, Pav) => 180 * d*d*d*d / L * Pav; // L/s (Torr)
@@ -559,7 +696,11 @@ const cond    = (d, L, Pav) => condVis(d, L, Pav) + condMol(d, L);
 const knudsen = (P, d) => mfp(P) / d;
 const regime  = Kn => Kn > 0.5 ? "molecular" : (Kn < 0.01 ? "viscous" : "transitional");
 
-/* one backward-Euler step for one gas species (Q = source into chamber, Torr*L/s) */
+/* one backward-Euler step for one gas species (Q1 -> manifold, Q2 -> chamber).
+   S = pump speed for this species, held over the step; Pu = that pump's
+   ultimate as a back-leak. For the roughers Pu is passed as 0 because their
+   ultimate is already inside S — back-leakage past the seals is a real loss of
+   swept volume. For the turbo it is a genuine back-leak through the blade stack. */
 function beStep(P1, P2, C, Q1, Q2, Pu, S, p, dt) {
   const a11 = 1 + dt*(C + S)/p.V1,   a12 = -dt*C/p.V1;
   const a21 = -dt*C/p.V2,            a22 = 1 + dt*C/p.V2;
@@ -568,41 +709,95 @@ function beStep(P1, P2, C, Q1, Q2, Pu, S, p, dt) {
   return [(b1*a22 - a12*b2)/det, (a11*b2 - a21*b1)/det];
 }
 
-/* two-volume, two-species (air + outgassed H2O) pumpdown on an adaptive log grid */
+/* Crossover: standard practice is to watch the chamber gauge. The second
+   clause is the real-world escape hatch — once the rougher sits at its own
+   ultimate it will never get you lower, so you cross over anyway. */
+const crossNow = (P2tot, P1tot, p) =>
+  P2tot <= p.Px || P1tot <= pUlt(p) * 1.2;
+
+/* two-volume, two-species (air + outgassed H2O) pumpdown on an adaptive log
+   grid. Rougher on the manifold to crossover, then the turbo — with the
+   rougher moving to the foreline to back it. */
 function simulate(p) {
-  let P1a = p.P0, P2a = p.P0, P1w = 0, P2w = 0, t = 0, dt = 1e-7;
-  const T = [], A1 = [], A2 = [], W1 = [], W2 = [];
+  let P1a = P_ATM, P2a = P_ATM, P1w = 0, P2w = 0, t = 0, dt = 1e-7;
+  let crossed = false, tX = null, sX = 0, foreX = null, foreMax = 0;
+  const T = [], A1 = [], A2 = [], W1 = [], W2 = [], SP = [], FL = [];
   let lastRec = 0, steps = 0;
-  const rec = () => {
+  const Tb = turbo(p.tp);
+  const rec = (s, f) => {
     T.push(Math.max(t, 1e-7));
     A1.push(P1a + P1w); A2.push(P2a + P2w);
     W1.push(Math.max(P1w, 1e-12)); W2.push(Math.max(P2w, 1e-12));
+    SP.push(Math.max(s, 1e-6)); FL.push(f == null ? 1e-12 : Math.max(f, 1e-12));
   };
-  rec();
-  while (P2a + P2w > 2e-9 && t < T_END && steps < 60000) {
+  rec(sRough(P_ATM, p), null);
+  const floor = Tb.Pu * 1.02;
+  while (P2a + P2w > floor && t < T_END && steps < 60000) {
     steps++;
+    if (!crossed && crossNow(P2a + P2w, P1a + P1w, p)) {
+      crossed = true;
+      tX = Math.max(t, 1e-7);
+      sX = sTurbo(P1a, P1w, p)[0];
+    }
     const Cv = condVis(p.d, p.L, 0.5 * ((P1a + P1w) + (P2a + P2w)));  // viscous term uses mean total pressure
     const Cm = condMol(p.d, p.L);
     const Q = p.og ? Qog(t, p.ogA, p.ogV) : 0;
-    const Sp = pumpS(P1a + P1w, p.St / S_TURBO0);   // station speed at manifold pressure
+    const [Sa, Sw] = pumpSpeeds(crossed, P1a, P1w, p);
+    const Pua = crossed ? Tb.Pu : 0;   // rougher's ultimate already lives in its S
+    /* foreline only exists once the turbo is running and the rougher is backing it */
+    let fore = null;
+    if (crossed) {
+      fore = foreline(Sa * P1a + Sw * P1w, p);
+      if (fore != null && fore > foreMax) foreMax = fore;
+      if (tX != null && foreX == null) foreX = fore;
+    }
     const Qw2 = Q + (p.ww ? Qdw(t) : 0);            // chamber-side water: glue + hot walls
     const Qw1 = p.ww ? Qman(t) : 0;                 // manifold-side water: unheated plumbing
-    const na = beStep(P1a, P2a, Cv + Cm, 0, p.lk ? p.Ql : 0, PU, Sp, p, dt);
-    const nw = beStep(P1w, P2w, Cv + Cm * FW, Qw1, Qw2, 0, Sp, p, dt);
+    const na = beStep(P1a, P2a, Cv + Cm,      0,   p.lk ? p.Ql : 0, Pua, Sa, p, dt);
+    const nw = beStep(P1w, P2w, Cv + Cm * FW,  Qw1, Qw2,            0,   Sw, p, dt);
     const rel = Math.max(
       Math.abs(na[0] + nw[0] - (P1a + P1w)) / Math.max(P1a + P1w, 1e-10),
       Math.abs(na[1] + nw[1] - (P2a + P2w)) / Math.max(P2a + P2w, 1e-10));
     if (rel > 0.25 && dt > 1e-8) { dt *= 0.5; continue; }
     t += dt; [P1a, P2a] = na; [P1w, P2w] = nw;
+    if (t >= lastRec * 1.05) { rec(Sa, fore); lastRec = t; }
+    dt = Math.min(dt * 1.2, 0.02*t + 1e-7);
+  }
+  rec(pumpSpeeds(crossed, P1a, P1w, p)[0], null);
+  /* land exactly on the 20-day window edge: hold the last state out if the run
+     bottomed out at the ultimate early, else trim the final step's overshoot */
+  if (t < T_END) { t = T_END; rec(pumpSpeeds(crossed, P1a, P1w, p)[0], null); }
+  else T[T.length - 1] = T_END;
+  return { T, P1: A1, P2: A2, W1, W2, S: SP, F: FL,
+           tEnd: T_END, tX, sX, foreX, foreMax };
+}
+
+/* the same pump set bolted straight onto one lumped volume — no bottleneck */
+function simulateIdeal(p) {
+  const V = p.V1 + p.V2, Tb = turbo(p.tp);
+  let Pa = P_ATM, Pw = 0, t = 0, dt = 1e-7, crossed = false;
+  const X = [], Y = [];
+  let lastRec = 0, steps = 0;
+  const rec = () => { X.push(Math.max(t, 1e-7)); Y.push(Math.max(Pa + Pw, 1e-12)); };
+  rec();
+  while (Pa + Pw > Tb.Pu * 1.02 && t < T_END && steps < 60000) {
+    steps++;
+    if (!crossed && crossNow(Pa + Pw, Pa + Pw, p)) crossed = true;
+    const [Sa, Sw] = pumpSpeeds(crossed, Pa, Pw, p);
+    const Pua = crossed ? Tb.Pu : 0;
+    const Qw = (p.og ? Qog(t, p.ogA, p.ogV) : 0) + (p.ww ? Qdw(t) + Qman(t) : 0);
+    const na = (Pa + dt*(Sa*Pua + (p.lk ? p.Ql : 0))/V) / (1 + dt*Sa/V);
+    const nw = (Pw + dt*Qw/V) / (1 + dt*Sw/V);
+    if (Math.abs(na + nw - (Pa + Pw)) / Math.max(Pa + Pw, 1e-10) > 0.25 && dt > 1e-8) { dt *= 0.5; continue; }
+    t += dt; Pa = na; Pw = nw;
     if (t >= lastRec * 1.05) { rec(); lastRec = t; }
     dt = Math.min(dt * 1.2, 0.02*t + 1e-7);
   }
   rec();
-  /* land the curve exactly on the window edge: hold the last state out to 20 days if the
-     run bottomed out at the ultimate early, otherwise trim the final step's overshoot */
+  /* land on the 20-day window edge, matching simulate() */
   if (t < T_END) { t = T_END; rec(); }
-  else T[T.length - 1] = T_END;
-  return { T, P1: A1, P2: A2, W1, W2 };
+  else X[X.length - 1] = T_END;
+  return { X, Y };
 }
 
 /* log-log interpolation of Y(x) on ascending X */
@@ -657,9 +852,34 @@ function fmtVal(v) {
 }
 
 /* ---------------- controls (slider + typeable field) ---------------- */
+/* hardware selectors — the only way pump speed is ever set. There is no speed
+   input anywhere: pick the pump, and its published curve supplies the number
+   at whatever pressure the model is currently at. */
+const state = {};
+state.rp = "nxds10ic";
+state.tp = "next300d";
+{
+  const box = document.getElementById("hardware");
+  const mk = (label, key, table) => {
+    const div = document.createElement("div");
+    div.className = "ctl";
+    const opts = Object.entries(table)
+      .map(([k, v]) => `<option value="${k}">${v.make} ${v.model}</option>`).join("");
+    div.innerHTML = `<label>${label}</label>
+      <select class="sel" id="sel_${key}" aria-label="${label}">${opts}</select>
+      <div class="fine" id="fine_${key}"></div>`;
+    box.appendChild(div);
+    const sel = div.querySelector("select");
+    sel.value = state[key];
+    sel.addEventListener("change", () => { state[key] = sel.value; recompute(); });
+  };
+  mk("Roughing pump", "rp", ROUGHERS);
+  mk("High-vacuum pump", "tp", TURBOS);
+}
+
 const PARAMS = [
-  { key:"P0", label:"Starting pressure", unit:"Torr", lo:0.01, hi:760, def:760 },
-  { key:"St", label:"Turbo plateau speed", unit:"L/s", lo:5, hi:2000, def:84 },
+  { key:"Px", label:"Crossover pressure", unit:"Torr", lo:0.01, hi:10, def:0.1,
+    note:"rougher hands the chamber to the turbo here — standard practice is 50–150 mTorr" },
   { key:"d",  label:"Bottleneck diameter", unit:"mm", lo:0.2, hi:10, def:1, toDisp:v=>v*10, fromDisp:v=>v/10 },
   { key:"L",  label:"Bottleneck length", unit:"cm", lo:2, hi:30, def:10 },
   { key:"V1", label:"Manifold volume", unit:"L", lo:0.5, hi:20, def:2 },
@@ -669,7 +889,6 @@ const PARAMS = [
   { key:"Ql", label:"Air-leak rate", unit:"×10⁻⁹ Torr·L/s", lo:1e-9, hi:1e-4, def:1e-6,
     toDisp:v=>v*1e9, fromDisp:v=>v/1e9 },
 ];
-const state = {};
 const ctlBox = document.getElementById("controls");
 for (const p of PARAMS) {
   state[p.key] = p.def;
@@ -679,7 +898,8 @@ for (const p of PARAMS) {
   div.innerHTML = `<label>${p.label}
       <span class="valrow"><input class="val" type="text" inputmode="decimal" id="t_${p.key}"
         aria-label="${p.label} value"><span class="unit">${p.unit}</span></span></label>
-    <input type="range" min="0" max="1000" id="s_${p.key}" aria-label="${p.label}">`;
+    <input type="range" min="0" max="1000" id="s_${p.key}" aria-label="${p.label}">
+    ${p.note ? `<div class="fine">${p.note}</div>` : ""}`;
   ctlBox.appendChild(div);
   const sld = div.querySelector('input[type=range]');
   const txt = div.querySelector('input.val');
@@ -701,6 +921,21 @@ for (const p of PARAMS) {
     }
     txt.blur();
     syncText();
+  });
+}
+/* gas-ballast toggle — the nXDS's two published ultimates */
+state.gb = false;
+{
+  const div = document.createElement("div");
+  div.className = "ctl";
+  div.innerHTML = `<label class="ck"><input type="checkbox" id="gbChk">
+      <span>Gas ballast open (position 1)<br><span class="fine">flushes condensables through
+      the scroll, at the cost of ultimate</span></span></label>
+    <div class="fine" style="margin-top:4px">ultimate 4×10⁻² mbar open vs 7×10⁻³ mbar closed</div>`;
+  ctlBox.appendChild(div);
+  div.querySelector("#gbChk").addEventListener("change", ev => {
+    state.gb = ev.target.checked;
+    recompute();
   });
 }
 /* outgassing toggle */
@@ -857,6 +1092,25 @@ function makeChart(rootId, legId, cfg) {
                    "stroke-linejoin": "round", "stroke-linecap": "round",
                    ...(s.dash ? { "stroke-dasharray": s.dash } : {}) }, gData);
     }
+    /* vertical event markers */
+    for (const v of (M.vmarks || [])) {
+      if (!(v.x > M.x0 && v.x < M.x1)) continue;
+      const x = xPix(v.x);
+      el("line", { x1:x, y1:mT, x2:x, y2:H-mB, stroke: v.color || "var(--series-3)",
+                   "stroke-width":1.4, "stroke-dasharray":"4 4" }, gAnno);
+      const t = el("text", { x: x + 4, y: H-mB-5, "font-size":10, fill: v.color || "var(--series-3)" }, gAnno);
+      t.textContent = v.text;
+    }
+    /* horizontal reference levels (pump ultimate, target pressure) */
+    for (const h of (M.hlines || [])) {
+      if (!(h.y > M.y0 && h.y < M.y1)) continue;
+      const y = yPix(h.y);
+      el("line", { x1:mL, y1:y, x2:W-mR, y2:y, stroke: h.color || "var(--muted)",
+                   "stroke-width":1.2, "stroke-dasharray":"4 4" }, gAnno);
+      const t = el("text", { x: W-mR-4, y: y-4, "text-anchor":"end", "font-size":10,
+                             fill: h.color || "var(--muted)" }, gAnno);
+      t.textContent = h.text;
+    }
     /* selective direct labels */
     for (const a of (M.labels || [])) {
       const t = el("text", { x: Math.min(xPix(a.x), W-mR-4), y: Math.max(yPix(a.y) + (a.dy||0), mT+10),
@@ -952,30 +1206,47 @@ function drawSchem(p) {
   const { pump, v1, tube, v2, cy } = geo;
   schem.innerHTML = "";
   const line = "var(--text-2)";
-  /* pump body + blade stages */
+  const R = rougher(p.rp), Tb = turbo(p.tp);
+  /* turbo body: blade stages, sitting on the manifold */
   el("rect", { x: pump.x, y: pump.y, width: pump.w, height: pump.h, rx: 10,
                fill: "none", stroke: line, "stroke-width": 1.6 }, schem);
   for (let i = 1; i <= 5; i++) {
     const y = pump.y + i * pump.h/6;
-    const tilt = (i % 2 ? 4 : -4);            // alternating rotor/stator stages
+    const tilt = (i % 2 ? 4 : -4);            // alternating rotor / stator stages
     for (let j = 0; j < 5; j++) {
       const x = pump.x + 17 + j * 19;
       el("line", { x1: x, y1: y + tilt, x2: x + 10, y2: y - tilt,
-                   stroke: "var(--series-1)", "stroke-width": 2, "stroke-linecap":"round", opacity: 0.75 }, schem);
+                   stroke: "var(--series-1)", "stroke-width": 2,
+                   "stroke-linecap": "round", opacity: 0.75 }, schem);
     }
   }
   const snow = el("text", { x: pump.x+pump.w/2, y: pump.y-8, "text-anchor":"middle",
                             "font-size": 12, fill: "var(--text-2)" }, schem);
-  snow.textContent = "turbo pump";
-  const slab = el("text", { x: pump.x+pump.w/2, y: pump.y+pump.h+18, "text-anchor":"middle",
-                            "font-size": 11.5, fill: "var(--muted)" }, schem);
-  slab.textContent = "nEXT " + fmtS(p.St) + " L/s + nXDS10iC";
-  /* duct pump->manifold (wide, unrestricted) */
-  el("rect", { x: pump.x+pump.w, y: cy-22, width: 16, height: 44, fill: "none", stroke: line, "stroke-width": 1.4 }, schem);
+  snow.textContent = Tb.model + " turbo";
+  const slab = el("text", { x: pump.x+pump.w/2, y: pump.y+pump.h+16, "text-anchor":"middle",
+                            "font-size": 11.5, fill: "var(--text-1)", id: "pumpLab" }, schem);
+  slab.textContent = "–";
+  /* duct turbo->manifold */
+  el("rect", { x: pump.x+pump.w, y: cy-22, width: 16, height: 44,
+               fill: "none", stroke: line, "stroke-width": 1.4 }, schem);
+  /* roughing pump: on the manifold until crossover, then on the turbo exhaust.
+     Drawn once, below, with its duty label switching live. */
+  const rp = { x: pump.x + 14, y: 256, w: 96, h: 40 };
+  el("line", { x1: pump.x + pump.w/2, y1: pump.y + pump.h + 22,
+               x2: pump.x + pump.w/2, y2: rp.y, stroke: line, "stroke-width": 1.4,
+               "stroke-dasharray": "4 3", id: "foreLine" }, schem);
+  el("rect", { x: rp.x, y: rp.y, width: rp.w, height: rp.h, rx: 6,
+               fill: "none", stroke: line, "stroke-width": 1.6 }, schem);
+  const rl1 = el("text", { x: rp.x+rp.w/2, y: rp.y+15, "text-anchor":"middle",
+                           "font-size": 11, fill: "var(--text-2)" }, schem);
+  rl1.textContent = R.model;
+  const rl2 = el("text", { x: rp.x+rp.w/2, y: rp.y+29, "text-anchor":"middle",
+                           "font-size": 10.5, fill: "var(--muted)", id: "roughLab" }, schem);
+  rl2.textContent = "–";
   /* manifold */
   el("rect", { x: v1.x, y: v1.y, width: v1.w, height: v1.h, rx: 6, fill: "none", stroke: line, "stroke-width": 1.6 }, schem);
-  const v1lab = el("text", { x: v1.x+v1.w/2, y: v1.y+v1.h+18, "text-anchor":"middle", "font-size": 11.5, fill: "var(--muted)" }, schem);
-  v1lab.textContent = "manifold " + fmtS(p.V1) + " L";
+  const v1lab = el("text", { x: v1.x+v1.w/2, y: v1.y+v1.h-7, "text-anchor":"middle", "font-size": 10.5, fill: "var(--muted)" }, schem);
+  v1lab.textContent = fmtS(p.V1) + " L";
   const p1t = el("text", { x: v1.x+v1.w/2, y: v1.y-10, "text-anchor":"middle",
                            fill: "var(--text-1)", "font-weight": 650, id: "p1txt" }, schem);
   el("tspan", { "font-size": 11, fill: "var(--muted)", "font-weight": 500 }, p1t).textContent = "P₁ ";
@@ -1020,20 +1291,31 @@ function drawSchem(p) {
     w2t.textContent = "";
   }
 }
-function updateSchemLive(P1, P2, W1, W2) {
+function updateSchemLive(P1, P2, W1, W2, Spump, crossed, fore) {
   const t1 = document.getElementById("p1val"), t2 = document.getElementById("p2val");
   if (t1) t1.textContent = fmtP(P1);
   if (t2) t2.textContent = fmtP(P2);
   const w1t = document.getElementById("p1wt"), w2t = document.getElementById("p2wt");
-  if (w1t) w1t.textContent = "RGA H₂O " + fmtP(W1) + " Torr";
+  if (w1t) w1t.textContent = "H₂O " + fmtP(W1) + " Torr";
   if (w2t) w2t.textContent = "H₂O " + fmtP(W2) + " Torr";
+  /* live speed under whichever pump is on the chamber, plus the rougher's duty */
+  const R = rougher(state.rp), Tb = turbo(state.tp);
+  const pl = document.getElementById("pumpLab");
+  if (pl) { pl.textContent = crossed ? fmtS(Spump) + " L/s" : "spinning up";
+            pl.setAttribute("fill", crossed ? "var(--text-1)" : "var(--muted)"); }
+  const rl = document.getElementById("roughLab");
+  if (rl) rl.textContent = crossed
+    ? "backing · foreline " + (fore ? fmtP(fore) : "–") + " Torr"
+    : "roughing · " + fmtS(Spump) + " L/s";
+  const fl = document.getElementById("foreLine");
+  if (fl) fl.setAttribute("stroke", crossed ? "var(--series-1)" : "var(--text-2)");
   /* λ scale bar in its own strip at the bottom of the schematic, same px-per-cm
      scale as the drawn tube; the "bore" tick marks the tube diameter for comparison */
   const g = document.getElementById("mfpbar");
   if (!g || !geo) return;
   g.innerHTML = "";
   const lam = mfp(0.5*(P1+P2));
-  const x0 = 230, xMax = 730, y = 288;
+  const x0 = 300, xMax = 730, y = 322;
   const borePx = Math.max(geo.tube.h, 2);
   const px = Math.max(2, Math.min(lam * geo.k, xMax - x0));
   const clamped = lam * geo.k > xMax - x0;
@@ -1056,6 +1338,7 @@ function fitCanvas() {
   canvas.width = w * dpr; canvas.height = h * dpr;
   ctx.setTransform(w * dpr / 760, 0, 0, w * dpr / 760, 0, 0); // canvas coords = svg viewBox coords
 }
+const SCHEM_H = 340;   // must match the schematic viewBox height
 window.addEventListener("resize", () => { fitCanvas(); if (sim) buildRuler(); });
 const inRect = (r, x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 function regionOf(x, y) {
@@ -1132,7 +1415,7 @@ function stepParticles(dtf, P1, P2) {
   }
   particles = alive;
   /* draw */
-  ctx.clearRect(0, 0, 760, 300);
+  ctx.clearRect(0, 0, 760, SCHEM_H);
   const dark = matchMedia("(prefers-color-scheme: dark)").matches ||
                document.documentElement.dataset.theme === "dark";
   ctx.fillStyle = dark ? "rgba(255,255,255,0.72)" : "rgba(11,11,11,0.55)";
@@ -1141,23 +1424,6 @@ function stepParticles(dtf, P1, P2) {
     ctx.arc(p.x, p.y, 1.7, 0, Math.PI*2);
     ctx.fill();
   }
-}
-
-/* single lumped volume (no bottleneck) pumped by the same station curve */
-function idealSim(p) {
-  const V = p.V1 + p.V2, tMax = p.og ? 1e7 : (p.lk ? 1e5 : 1e9);
-  let P = p.P0, t = 0, dt = 1e-7, last = 0;
-  const X = [1e-7], Y = [P];
-  while (P > 2e-9 && t < tMax && X.length < 5000) {
-    const S = pumpS(P, p.St / S_TURBO0);
-    const Q = (p.og ? Qog(t, p.ogA, p.ogV) : 0) + (p.lk ? p.Ql : 0) + (p.ww ? Qdw(t) + Qman(t) : 0);
-    P = (P + dt * (S * PU + Q) / V) / (1 + dt * S / V);   // backward Euler
-    t += dt;
-    if (t >= last * 1.05) { X.push(t); Y.push(Math.max(P, 1e-12)); last = t; }
-    dt = Math.min(dt * 1.2, 0.02 * t + 1e-7);
-  }
-  X.push(Math.max(t, 1e-6)); Y.push(Math.max(P, 1e-12));
-  return { X, Y };
 }
 
 /* ---------------- playback + recompute ---------------- */
@@ -1201,27 +1467,73 @@ function buildRuler() {
 
 function recompute() {
   sim = simulate(state);
-  const Vtot = state.V1 + state.V2;
-  ideal = idealSim(state);   // numeric single-volume with the same S(P) station curve
+  ideal = simulateIdeal(state);
 
   const Cm = condMol(state.d, state.L);
-  const SeffFloor = 1 / (1/state.St + 1/Cm);
+  const R = rougher(state.rp), Tb = turbo(state.tp), Pu = pUlt(state);
+  const SeffFloor = 1 / (1/Tb.Sn2 + 1/Cm);
   const tBn = timeToReach(sim.T, sim.P2, TARGET);
   const tId = timeToReach(ideal.X, ideal.Y, TARGET);
+
+  /* hardware summary lines under each selector */
+  document.getElementById("fine_rp").textContent =
+    R.kind + " · peak " + fmtS(R.Speak) + " L/s (" + (R.Speak*3.6).toPrecision(3)
+    + " m³/h) · ultimate " + fmtP(pUlt(state)) + " Torr"
+    + (state.gb ? (R.PuGB1 != null ? " (ballast open)" : " (no ballast-open figure published)") : "");
+  document.getElementById("fine_tp").textContent =
+    Tb.kind + " · " + fmtS(Tb.Sn2) + " L/s N₂ · max throughput "
+    + (Tb.Qmax/SCCM).toPrecision(3) + " sccm · critical backing " + fmtP(Tb.Pbackmax)
+    + " Torr · ultimate " + fmtP(Tb.Pu) + " Torr";
+
   /* the run is a finite window, so "no crossing" means "not yet" — report how far it actually
      got rather than a bare dash, which reads as a contradiction against a curve that is still falling */
   const nEnd = sim.T.length - 1, tRun = sim.T[nEnd], P2end = sim.P2[nEnd];
   const fmtX = r => "×" + (r >= 100 ? Math.round(r).toLocaleString() : r.toPrecision(2));
   document.getElementById("tileT").textContent = tBn ? fmtTime(tBn) : "> " + fmtTime(tRun);
   document.getElementById("tileTnote").textContent = tBn
-    ? "S_eff at base ≈ " + fmtS(SeffFloor) + " L/s of the " + fmtS(state.St) + " L/s turbo plateau"
+    ? "S_eff at base ≈ " + fmtS(SeffFloor) + " L/s of the turbo's " + fmtS(Tb.Sn2) + " L/s"
     : "still at " + fmtP(P2end) + " Torr after " + fmtTime(tRun) + " — run ends before the target";
   document.getElementById("tileTi").textContent = fmtTime(tId);
   document.getElementById("tileSlow").textContent =
     tId > 0 ? (tBn ? fmtX(tBn/tId) : "> " + fmtX(tRun/tId)) : "–";
+
+  /* roughing stage */
+  document.getElementById("tileTx").textContent = fmtTime(sim.tX);
+  document.getElementById("tileTxnote").textContent = tBn && sim.tX
+    ? Math.round(100 * sim.tX / tBn) + "% of the pumpdown is the " + R.model
+      + ", running at " + fmtS(sRough(state.Px, state)) + " L/s by crossover ("
+      + Math.round(100 * sRough(state.Px, state) / R.Speak) + "% of its peak)"
+    : "";
+
+  /* turbo stage */
+  const Pmax = Tb.Qmax / Tb.Sn2;
+  document.getElementById("tileSx").textContent = fmtS(sim.sX) + " L/s";
+  document.getElementById("tileSxnote").textContent =
+    "throughput-limited from " + fmtS(Tb.Sn2) + " L/s at crossover; full speed only below "
+    + fmtP(Pmax) + " Torr, where the " + (Tb.Qmax/SCCM).toPrecision(3) + " sccm ceiling stops biting";
+
+  /* the coupling between the two: can the rougher take the turbo's exhaust? */
+  const okBack = sim.foreMax > 0 && sim.foreMax < Tb.Pbackmax;
+  document.getElementById("tileFore").textContent =
+    sim.foreMax > 0 ? fmtP(sim.foreMax) + " Torr" : "–";
+  document.getElementById("tileForenote").textContent = sim.foreMax > 0
+    ? (okBack ? "peak foreline load, vs the " + Tb.model + "'s " + fmtP(Tb.Pbackmax)
+                + " Torr critical backing — " + Math.round(100*sim.foreMax/Tb.Pbackmax)
+                + "% of budget, so the " + R.model + " backs it comfortably"
+              : "EXCEEDS the " + Tb.model + "'s " + fmtP(Tb.Pbackmax)
+                + " Torr critical backing — the turbo would stall on this rougher")
+    : "";
+
+  const Pbase = sim.P2[sim.P2.length - 1];
+  document.getElementById("tileBase").textContent = fmtP(Pbase) + " Torr";
+  document.getElementById("tileBasenote").textContent = Pbase > Tb.Pu * 5
+    ? "held above the turbo's " + fmtP(Tb.Pu) + " Torr ultimate by "
+      + (state.og ? "the H₂O source" : "the bottleneck")
+    : "at the turbo's ultimate, " + fmtP(Tb.Pu) + " Torr";
+
   document.getElementById("tileC").textContent = fmtS(Cm) + " L/s";
   document.getElementById("tileCnote").textContent =
-    "vs " + fmtS(condVis(state.d, state.L, state.P0)) + " L/s viscous at start";
+    "vs " + fmtS(condVis(state.d, state.L, P_ATM)) + " L/s viscous at atmosphere";
   document.getElementById("wwNote").innerHTML = state.ww
     ? "hot walls: " + fmtP(DW_I0) + " Torr·L pool, τ = 30 min — gone in the first ~2 h.  " +
       "manifold (" + A_MAN + " cm², 22 °C): q(1 h) = " + fmtP(Qman(3600)) + " Torr·L/s, ∝ 1/t — " +
@@ -1230,7 +1542,7 @@ function recompute() {
   document.getElementById("lkNote").innerHTML = state.lk
     ? "Q = " + fmtP(state.Ql) + " Torr·L/s (" + fmtP(state.Ql / 0.76) + " atm·cc/s) — " +
       "He-test equivalent ×2.69 = " + fmtP(state.Ql * 2.69 / 0.76) + " atm·cc/s He. " +
-      "Predicted floor P₂ = Q/S_eff ≈ " + fmtP(state.Ql * (1/state.St + 1/condMol(state.d, state.L))) + " Torr — " +
+      "Predicted floor P₂ = Q/S_eff ≈ " + fmtP(state.Ql * (1/Tb.Sn2 + 1/condMol(state.d, state.L))) + " Torr — " +
       "a floor that does NOT fall with time is the leak signature."
     : "off — base pressure is outgassing/ultimate-limited";
   document.getElementById("ogNote").innerHTML =
@@ -1259,35 +1571,43 @@ function recompute() {
     { name: "chamber H₂O", color: "var(--series-1)", dash: "2 3", X: sim.T, Y: sim.W2 },
     { name: "H₂O at RGA (manifold)", color: "var(--series-2)", dash: "2 3", X: sim.T, Y: sim.W1 });
   s1.push({ name: "no bottleneck (ideal)", color: "var(--series-3)", dash: "6 5", X: ideal.X, Y: ideal.Y });
+  const y0c1 = Tb.Pu / 3;
   c1.draw({
-    x0, x1, y0: 6e-10, y1: state.P0 * 3,
+    x0, x1, y0: y0c1, y1: P_ATM * 3,
     bands: [
       { lo: pV, hi: 1e9, label: "viscous — conductance ∝ P", wash: false },
       { lo: pM, hi: pV, label: "transitional", wash: true },
       { lo: 0,  hi: pM, label: "molecular — conductance fixed", wash: false },
     ],
     series: s1,
-    marks: [{ y: TARGET, text: "target " + fmtP(TARGET) + " Torr" }],
+    vmarks: sim.tX ? [{ x: sim.tX, text: "crossover → " + Tb.model }] : [],
+    hlines: [
+      { y: Pu, text: R.model + " ultimate", color: "var(--muted)" },
+      { y: TARGET, text: "10⁻⁶ Torr target", color: "var(--series-3)" },
+    ],
     labels: (() => {
       const tMid = Math.sqrt(x0 * x1);
       const yI = interpLog(ideal.X, ideal.Y, tMid);
-      return yI > 6e-10 && yI < state.P0
+      return yI > y0c1 && yI < P_ATM
         ? [{ x: tMid, y: yI, dy: -6, text: "ideal", anchor: "middle" }] : [];
     })(),
   });
   c1.setLegend(s1.map(s => ({ name: s.name, color: s.color, dash: s.dash })));
 
-  /* chart 2: delivered speed vs pressure */
+  /* chart 2: what each pump actually offers, vs pressure. Above the crossover
+     setpoint the rougher is on the chamber; below it the turbo, throughput-
+     limited until P < Qmax/S_rated. Neither is a flat line. */
+  const x0c2 = Tb.Pu * 0.7;
   const Pg = [], Cg = [], Sg = [], Eg = [];
-  for (let i = 0; i <= 220; i++) {
-    const P = 10 ** (-9 + i / 220 * (Math.log10(state.P0) + 9));
+  for (let i = 0; i <= 320; i++) {
+    const P = 10 ** (Math.log10(x0c2) + i / 320 * (Math.log10(P_ATM) - Math.log10(x0c2)));
     const C = cond(state.d, state.L, P);
-    const Sp = pumpS(P, state.St / S_TURBO0);
-    Pg.push(P); Cg.push(C); Sg.push(Sp); Eg.push(1 / (1/Sp + 1/C));
+    const S = Math.max(P > state.Px ? sRough(P, state) : sTurbo(P, 0, state)[0], 1e-6);
+    Pg.push(P); Cg.push(C); Sg.push(S); Eg.push(1 / (1/S + 1/C));
   }
-  const yMin = Math.max(1e-3, SeffFloor / 8);
   c2.draw({
-    x0: 1e-9, x1: state.P0, y0: yMin, y1: Math.max(state.St, Cm) * 40,
+    x0: x0c2, x1: P_ATM, y0: Math.max(1e-3, Math.min(SeffFloor, Cm) / 30),
+    y1: Math.max(Tb.Sn2, Cm) * 40,
     bands: [
       { lo: pV, hi: 1e9, label: "viscous", wash: false },
       { lo: pM, hi: pV, label: "transitional", wash: true },
@@ -1295,17 +1615,20 @@ function recompute() {
     ],
     series: [
       { name: "tube conductance C", color: "var(--series-2)", X: Pg, Y: Cg },
-      { name: "station speed S(P) — nXDS10iC + nEXT", color: "var(--muted)", dash: "6 5", X: Pg, Y: Sg },
+      { name: R.model + ", then " + Tb.model, color: "var(--muted)", dash: "6 5", X: Pg, Y: Sg },
       { name: "delivered to chamber S_eff", color: "var(--series-1)", X: Pg, Y: Eg },
     ],
+    vmarks: [{ x: state.Px, text: "crossover", color: "var(--series-3)" }],
     labels: [
-      { x: 3e-9, y: SeffFloor, dy: -7, text: "conductance-limited floor ≈ " + fmtS(SeffFloor) + " L/s" },
-      { x: 3e-9, y: state.St, dy: -7, text: "S(P)" },
+      { x: x0c2 * 3, y: SeffFloor, dy: -7, text: "conductance-limited floor " + fmtS(SeffFloor) + " L/s" },
+      { x: x0c2 * 3, y: Tb.Sn2, dy: -7, text: Tb.model + " rated " + fmtS(Tb.Sn2) + " L/s" },
+      { x: Pmax * 2.2, y: Tb.Sn2, dy: 13, text: "throughput-limited, S = Qmax/P" },
+      { x: 400, y: R.Speak, dy: -7, text: R.model + " " + fmtS(R.Speak) + " L/s", anchor: "end" },
     ],
   });
   c2.setLegend([
     { name: "tube conductance C", color: "var(--series-2)" },
-    { name: "station speed S(P) — nXDS10iC + nEXT", color: "var(--muted)", dash: "5 4" },
+    { name: R.model + ", then " + Tb.model, color: "var(--muted)", dash: "5 4" },
     { name: "delivered speed S_eff", color: "var(--series-1)" },
   ]);
 
@@ -1332,7 +1655,20 @@ function tick(force) {
   scrub.value = Math.round(u * 1000);
   const W1 = state.og ? interpLog(sim.T, sim.W1, t) : 0;
   const W2 = state.og ? interpLog(sim.T, sim.W2, t) : 0;
-  updateSchemLive(P1, P2, W1, W2);
+  /* which pump is on the chamber right now, and what it is actually giving */
+  const crossed = sim.tX != null && t >= sim.tX;
+  const R = rougher(state.rp), Tb = turbo(state.tp);
+  const Spump = interpLog(sim.T, sim.S, t);
+  const Srated = crossed ? Tb.Sn2 : R.Speak;
+  const Ceff = cond(state.d, state.L, 0.5*(P1+P2));
+  document.getElementById("stgOut").textContent = crossed ? Tb.model + " turbo" : R.model + " rough";
+  document.getElementById("rateOut").textContent =
+    fmtS(Spump) + " L/s (" + Math.round(100 * Spump / Srated) + "% of rated)";
+  document.getElementById("effOut").textContent = fmtS(1/(1/Math.max(Spump,1e-6) + 1/Ceff)) + " L/s";
+  const fore = crossed ? interpLog(sim.T, sim.F, t) : null;
+  document.getElementById("foreOut").textContent =
+    fore && fore > 1e-9 ? fmtP(fore) + " Torr" : "—";
+  updateSchemLive(P1, P2, W1, W2, Spump, crossed, fore);
   c1.setCursor(t, 0);
   if (force) stepParticles(0.016, P1, P2);
 }
