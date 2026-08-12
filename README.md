@@ -59,3 +59,9 @@ the `.html` stays self-contained and portable.
 
 Useful flags: `--main` (force the repo-root copy), `--dir <path>`, `--file
 <name.html>`, `--port <n>`.
+
+## License
+
+[MIT](LICENSE). The models draw only on publicly available data and published
+research — pump curves come from the manufacturers' public datasheets and
+outgassing rates from the open literature, cited where they are used.
