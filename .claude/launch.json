@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["tools/serve.py", "--port", "8123"],
       "port": 8123
+    },
+    {
+      "name": "dewar-life",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["tools/serve.py", "--file", "dewar_vacuum_life.html", "--port", "8124"],
+      "port": 8124
     }
   ]
 }

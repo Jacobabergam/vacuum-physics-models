@@ -1,0 +1,1311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IR Dewar Vacuum Life</title>
+<style>
+  :root { color-scheme: light dark; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1:   #fcfcfb;
+    --page:        #f9f9f7;
+    --text-1:      #0b0b0b;
+    --text-2:      #52514e;
+    --muted:       #898781;
+    --grid:        #e1e0d9;
+    --baseline:    #c3c2b7;
+    --border:      rgba(11,11,11,0.10);
+    --band:        rgba(11,11,11,0.045);
+    --series-1:    #2a78d6;   /* headline / gettered / active treatment */
+    --series-2:    #eb6834;   /* no-getter total / comparison */
+    --series-3:    #1baf7a;   /* teal accents */
+    --doc-w:  #2a78d6; --doc-h2: #008300; --doc-ch4: #e87ba4; --doc-crit: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1: #1a1a19; --page: #0d0d0d;
+      --text-1: #ffffff; --text-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --baseline: #383835;
+      --border: rgba(255,255,255,0.10); --band: rgba(255,255,255,0.055);
+      --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+      --doc-w: #3987e5; --doc-ch4: #d55181; --doc-crit: #e66767;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19; --page: #0d0d0d;
+    --text-1: #ffffff; --text-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --baseline: #383835;
+    --border: rgba(255,255,255,0.10); --band: rgba(255,255,255,0.055);
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+    --doc-w: #3987e5; --doc-ch4: #d55181; --doc-crit: #e66767;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body.viz-root {
+    background: var(--page); color: var(--text-1);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 20px 16px 40px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 14px; }
+  h1 { font-size: 21px; font-weight: 650; letter-spacing: -0.01em; }
+  .sub { color: var(--text-2); max-width: 78ch; }
+
+  .app { display: grid; grid-template-columns: minmax(0, 1fr) 292px; gap: 14px; align-items: start; }
+  @media (max-width: 900px) { .app { grid-template-columns: 1fr; } .sidebar { position: static; } }
+
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+  }
+  .card h2 { font-size: 12.5px; font-weight: 600; color: var(--text-2);
+             text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .sect { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 12px; }
+
+  .schemwrap svg { display: block; width: 100%; height: auto; }
+
+  .sidebar { position: sticky; top: 12px; display: grid; gap: 14px; }
+  .ctl { margin-bottom: 12px; }
+  .ctl:last-child { margin-bottom: 2px; }
+  .ctl label { display: flex; justify-content: space-between; align-items: center; gap: 8px;
+               color: var(--text-2); font-size: 12.5px; margin-bottom: 3px; }
+  .ctl .valrow { display: inline-flex; align-items: center; gap: 5px; }
+  .ctl input.val {
+    width: 78px; background: transparent; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-1); font: inherit; font-weight: 600; padding: 2px 7px; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .ctl input.val:focus { outline: 1.5px solid var(--series-1); outline-offset: -1px; }
+  .ctl .unit { color: var(--muted); font-size: 12px; min-width: 26px; }
+  .ctl input[type=range] { width: 100%; accent-color: var(--series-1); }
+  .ctl select.sel {
+    width: 100%; background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text-1); font: inherit; font-weight: 600;
+    padding: 4px 7px; margin-top: 1px;
+  }
+  .ctl select.sel:focus { outline: 1.5px solid var(--series-1); outline-offset: -1px; }
+  /* toggle rows: left-packed, unlike the space-between slider labels above */
+  label.ck { display: flex; justify-content: flex-start; text-align: left; gap: 8px;
+        align-items: flex-start; color: var(--text-1) !important;
+        font-size: 13px !important; cursor: pointer; }
+  .ck input[type=checkbox] { accent-color: var(--series-1); width: 15px; height: 15px; margin-top: 2px; }
+
+  .hero-lbl { color: var(--text-2); font-size: 12.5px; }
+  .hero-val { font-size: 46px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+  .hero-note { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .res { display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+         padding: 7px 0; border-top: 1px solid var(--border); }
+  .res:first-of-type { margin-top: 10px; }
+  .res .k { color: var(--text-2); font-size: 12.5px; }
+  .res .v { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .res-note { color: var(--muted); font-size: 11.5px; margin-top: -4px; padding-bottom: 6px; }
+
+  .charts { display: grid; grid-template-columns: 1fr; gap: 22px; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; color: var(--text-2); font-size: 12.5px; }
+  .legend .it { display: inline-flex; align-items: center; gap: 6px; }
+  .legend svg { width: 22px; height: 8px; }
+  .tip {
+    position: absolute; pointer-events: none; display: none; z-index: 3;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 10px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  .tip .t { color: var(--text-2); margin-bottom: 3px; }
+  .tip .row { display: flex; align-items: center; gap: 6px; }
+  .tip .sw { width: 9px; height: 9px; border-radius: 3px; }
+
+  .explain { color: var(--text-2); display: grid; gap: 8px; max-width: 88ch; }
+  .explain b { color: var(--text-1); }
+  .explain code {
+    font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--band); border-radius: 4px; padding: 1px 5px; white-space: nowrap;
+  }
+  .fine { color: var(--muted); font-size: 12px; max-width: 88ch; }
+  text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+
+  .doc h3 { font-size: 13.5px; font-weight: 650; margin: 2px 0 6px; }
+  .doc p { color: var(--text-2); max-width: 100ch; margin-bottom: 8px; }
+  .doc p b, .doc li b { color: var(--text-1); }
+  .doc .fine { font-size: 12px; color: var(--muted); }
+  .rrow { display: grid; grid-template-columns: 205px 1fr; gap: 10px; align-items: center; margin: 24px 0 10px; }
+  .rrow:last-child { margin-top: 6px; }
+  .rlab { font-size: 12.5px; color: var(--text-2); text-align: right; line-height: 1.25; }
+  .rlab b { color: var(--text-1); }
+  .rbar { position: relative; height: 26px; border-radius: 6px; overflow: visible; background: var(--band); }
+  .rseg { position: absolute; top: 0; bottom: 0; }
+  .rseg span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+               font-size: 11.5px; font-weight: 650; color: #fff; white-space: nowrap; overflow: hidden; }
+  .rmark { position: absolute; top: -5px; bottom: -5px; width: 0; border-left: 2px solid var(--doc-crit); }
+  .rnote { position: absolute; top: -20px; transform: translateX(-50%); font-size: 11px;
+           color: var(--doc-crit); font-weight: 650; white-space: nowrap; }
+  .doctab { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+  .doctab th { text-align: left; color: var(--text-2); font-weight: 650; border-bottom: 1px solid var(--baseline);
+               padding: 5px 8px 5px 0; }
+  .doctab td { color: var(--text-2); border-bottom: 1px solid var(--grid); padding: 6px 8px 6px 0; vertical-align: top; }
+  .doctab td:first-child { color: var(--text-1); font-weight: 600; white-space: nowrap; }
+  .refs { columns: 2; column-gap: 26px; font-size: 12.5px; color: var(--text-2); padding-left: 18px; }
+  @media (max-width: 900px) { .refs { columns: 1; } }
+  .refs li { margin-bottom: 7px; break-inside: avoid; }
+  .refs a { color: var(--series-1); text-decoration: none; }
+  .refs a:hover { text-decoration: underline; }
+  .tag { font-size: 10.5px; font-weight: 650; border: 1px solid var(--border); border-radius: 4px;
+         padding: 0 5px; color: var(--muted); white-space: nowrap; }
+</style>
+</head>
+<body class="viz-root">
+<div class="wrap">
+  <div>
+    <h1>IR-camera dewar vacuum life: outgassing, getter budget, heat load</h1>
+    <div class="sub">A cooled IR detector lives inside a pinched-off vacuum dewar. After seal-off there is no
+    pump — only what the bake left behind (water in adhesives, in the cold-shield black coating, on the metal),
+    what the steel emits forever (H₂, a trace of CH₄), and a getter with a finite capacity ledger. This page
+    tracks the warm pressure over 1 day → 30 years of sealed life, the gas-conduction heat load it puts on the
+    cold space when the camera runs (area-dependent, and species-aware: the cold shield cryopumps water, so
+    H₂ and CH₄ carry the load), and the cooldown-time penalty as the vacuum softens. <b>Materials and getters
+    are picked from datasheet-backed presets — there is no outgassing rate to type in.</b></div>
+  </div>
+
+  <div class="app">
+    <!-- ============ model panel ============ -->
+    <div class="card">
+      <h2>Dewar cross-section</h2>
+      <div class="schemwrap">
+        <svg id="schem" viewBox="0 0 760 300" role="img" aria-label="Schematic: dewar shell, vacuum gap, coated cold shield, FPA, getter"></svg>
+      </div>
+
+      <div class="sect">
+        <div class="charts">
+          <div>
+            <h2>Warm pressure vs. storage time after pinch-off</h2>
+            <div class="legend" id="leg1"></div>
+            <div class="chart" id="chart1"></div>
+          </div>
+          <div>
+            <h2>Gas heat load on the cold space, if operated at that point in life</h2>
+            <div class="legend" id="leg2"></div>
+            <div class="chart" id="chart2"></div>
+          </div>
+          <div>
+            <h2>Cooldown time vs. life — the observable symptom</h2>
+            <div class="legend" id="leg3"></div>
+            <div class="chart" id="chart3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ right toolbar ============ -->
+    <div class="sidebar">
+      <div class="card">
+        <h2>Materials &amp; getter</h2>
+        <div id="hardware"></div>
+        <div class="hw-line fine" style="margin-top:8px">
+          Water contents come from each material's measured ASTM E595 outgassing record
+          (NASA GSFC database + vendor datasheets) — nothing here is typed in.
+        </div>
+      </div>
+      <div class="card">
+        <h2>Parameters</h2>
+        <div id="controls"></div>
+      </div>
+      <div class="card">
+        <h2>Results</h2>
+        <div class="hero-lbl">Sealed vacuum life to 10⁻³ Torr (end-of-life)</div>
+        <div class="hero-val" id="tileLife">–</div>
+        <div class="hero-note" id="tileLifeNote"></div>
+        <div class="res"><span class="k">Life without a getter</span><span class="v" id="tileLifeNg">–</span></div>
+        <div class="res-note" id="tileLifeNgNote"></div>
+        <div class="res"><span class="k">Required bake for target life</span><span class="v" id="tileBake">–</span></div>
+        <div class="res-note" id="tileBakeNote"></div>
+        <div class="res"><span class="k">Water inventory at pinch-off</span><span class="v" id="tileInv">–</span></div>
+        <div class="res-note" id="tileInvNote"></div>
+        <div class="res"><span class="k">Getter ledger at target life</span><span class="v" id="tileLedger">–</span></div>
+        <div class="res-note" id="tileLedgerNote"></div>
+        <div class="res"><span class="k">Heat load at target life</span><span class="v" id="tileHeat">–</span></div>
+        <div class="res-note" id="tileHeatNote"></div>
+        <div class="res"><span class="k">Worst-case ice on the cold filter</span><span class="v" id="tileIce">–</span></div>
+        <div class="res-note" id="tileIceNote"></div>
+        <div class="res"><span class="k">Cooldown, day 1 → target life</span><span class="v" id="tileCool">–</span></div>
+        <div class="res-note" id="tileCoolNote"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card explain">
+    <div><b>What kills a sealed dewar.</b> The budget is brutally small: 10⁻³ Torr in a 0.1 L volume is
+    <code>P·V ≈ 10⁻⁴ Torr·L ≈ 0.1 µg of water</code>. Sources ranked by era: surface water and thin films go
+    first (hours–days, and any competent bake removes them), adhesive reservoirs drain over days–months
+    (<code>τ₁ = 4L²/π²D</code> with drying depth L = volume / vent area — a buried bond line venting at its
+    perimeter is the slow one), then H₂ from the steel bulk owns the budget within days <i>unless a getter
+    absorbs it</i>, and finally CH₄ — which no getter pumps — sets the ceiling of a well-built dewar.</div>
+    <div><b>The getter is a ledger, not a pump curve.</b> A St707-class Zr-V-Fe getter holds getterable gas at
+    its equilibrium floor (~10⁻⁷ Torr) until its capacity is spent: water is surface-limited
+    (~2.4 Torr·L per gram) while H₂ dissolves into the bulk (~170 Torr·L/g), so this page keeps <b>two
+    ledgers</b>. Every Torr·L of water the bake leaves behind is getter capacity spent — bake quality is
+    measured in ledger margin, not in the pressure the getter hides.</div>
+    <div><b>Heat load is area physics.</b> In the free-molecular regime the gas-conduction flux is
+    <code>q = α·Λ₀·P·ΔT</code> per unit area — independent of the gap — so the load scales with the
+    cold-shield area you paint and cool. Per Torr, the species are NOT equal:
+    Λ₀ = 4.38 (H₂), 1.97 (CH₄), 1.18 (air) W·m⁻²·K⁻¹·Pa⁻¹. When cold, the shield cryopumps water
+    (ice vapor pressure is below 10⁻¹⁰ Torr at 80 K, and still only ~10⁻⁶ at a 150 K HOT-detector
+    setpoint), so the species-resolved load rides on H₂ + CH₄ —
+    and can EXCEED the classic "treat it as air" textbook curve late in life, when CH₄ dominates. The
+    air-equivalent toggle shows that classic curve (12 mW at 10⁻⁴ Torr, 116 mW at 10⁻³ for 40 cm²).</div>
+    <div><b>Why the coating is on the panel.</b> A painted cold shield is a polymer film with real water
+    content: 40 cm² of Aeroglaze Z306 at 60 µm holds ≈ 1.6 Torr·L — two-thirds of a 1 g getter's entire
+    water ledger. It dries fast (thin film, τ₁ ≈ 2 h at 22 °C), so a competent bake clears it — but skip or
+    shortcut the bake and the paint spends the ledger on day one. Acktar's inorganic film carries far less
+    absolute water (3–5 µm thick) but physisorbs 1–4 wt% in ambient air; both coatings, and Z306
+    especially, <b>re-load within 24 h of air exposure</b> (that is literally what ASTM E595's WVR measures) —
+    a bake only counts if the dewar is pinched off before it sees ambient humidity again.</div>
+
+    <div class="fine">Model, all constants from <code>research/data/dewar_life_materials.json</code> and
+    <code>outgassing_anchor_rates.json</code> (sources per entry; representative values are flagged there and
+    here): fixed context — shell 293 K, cold tip 80–150 K (slider; the HOT-detector trade: a higher
+    setpoint buys cooler lift and ΔT margin, and above ~140 K ice barely accumulates), 5 mm gap,
+    0.1–0.5 L free volume, EOL criterion
+    10⁻³ Torr warm, cooler lift 0.6 W at 80 K / 3.0 W at 300 K (linear, tactical Stirling class,
+    representative), 15 g Cu-equivalent cold mass, ε_eff 0.03, leads 0.7 mW/K. Adhesive and coating
+    reservoirs are Fickian slabs (Crank ch. 4) with the exact two-stage bake→storage argument
+    (X = (D_b·t_b + D_s·t_s)/L², Crank ch. 7); shared water diffusivity D(295 K) = 2×10⁻⁹ cm²/s,
+    E_a = 0.45 eV (epoxy moisture literature; sharing it with the polyurethane film is a flagged assumption —
+    thin films fully deplete in any competent bake, so coating results are D-insensitive). Water contents:
+    <a href="https://www.spacematdb.com/spacemat/manudatasheets/Aeroglaze%20z306.pdf">Lord Z306 datasheet
+    DS3017</a> (TML 1.0 / CVCM 0.02, E595-77; dry-film density 1.12 g/cm³ computed from its 27 wt% / 23 vol%
+    solids at 0.95 kg/L) with WVR 0.3–0.9 % from the
+    <a href="https://etd.gsfc.nasa.gov/capabilities/outgassing-database/">NASA GSFC outgassing database</a>
+    paint-only lots (median 0.6 % used here — e.g. GSFC14442: 1.00/0.02/0.57);
+    <a href="https://acktar.com/qualification-acktar-vacuum-black-coating/">Acktar vacuum black ESA/ISME09
+    qualification</a> (WVR 2.0–3.8 %, CVCM ≤ 0.01, film 3–5 µm at ~1.8 g/cm³); EPO-TEK
+    <a href="https://www.bondingsource.com/techdata/H70E.pdf">H70E</a> (WVR 0.25, GSFC12127) and
+    <a href="https://focenter.com/media/wysiwyg/2020/08/353ND_TDS.pdf">353ND</a> (WVR 0.35, GSFC29110);
+    <a href="https://datasheets.tdx.henkel.com/LOCTITE-STYCAST-2850FT-en_GL.pdf">Stycast 2850FT</a>
+    (WVR 0.05–0.15, ρ 2.29 — the driest preset);
+    <a href="https://multimedia.3m.com/mws/media/2366022O/3m-scotch-weld-epoxy-adhesive-2216-b-a-gray.pdf">3M
+    2216 gray</a> (WVR 0.23 TDS / up to 0.51 across GSFC lots; 0.30 used). The WVR-as-moisture proxy is a
+    24 h rehydration figure and therefore biased LOW vs long-soak equilibrium — the generic epoxy preset
+    (1 wt %) is the conservative anchor. Surface water: 3 monolayers over a 0.75–1.15 eV Redhead window,
+    ν = 10¹³ s⁻¹. Fixed gases: H₂ 10⁻¹² Torr·L·s⁻¹·cm⁻² (band 10⁻¹³–3×10⁻¹², Chiggiato), CH₄ 10⁻¹⁵
+    (decade uncertainty — it propagates 1:1 into the gettered-life ceiling). Getter:
+    <a href="https://psec.uchicago.edu/getters/sandia_ST707_getter_data_105402.pdf">Sandia St707 data</a>
+    (H₂ 170 Torr·L/g) and the <a href="https://psec.uchicago.edu/getters/H2O_monolayer_v2.pdf">PSEC
+    H₂O-capacity estimate</a> (2.4 Torr·L/g, surface-limited); gram options and the 10⁻⁷ Torr floor are
+    representative, and the ledger ignores speed derate near saturation. Gas conduction: Corruccini
+    free-molecular form bridged to the continuum plateau k·ΔT/gap by a parallel sum. Cooldown: Debye c_p(Cu),
+    θ_D = 343 K, RK4; stall = net refrigeration reaching zero while warm. A real leak is excluded — if one
+    exists it dominates everything and the sealed model is void (see the leak-diagnosis write-up in
+    <code>analysis/</code>). Differences from the <code>dewar_vacuum_model</code> package: dual getter ledger
+    (vs a single capacity), one lumped adhesive reservoir (vs two named entries), 400-point energy grid, and
+    the species-resolved cold-load accounting is new. Python parity twin:
+    <code>python3 dewar_vacuum_life.py --check</code> (REQ-U2, ≤0.5 %).</div>
+  </div>
+
+  <!-- ================= documentation block ================= -->
+  <div class="card explain doc">
+    <h2>Where the water budget stands — live from the panel settings</h2>
+    <p>Water at pinch-off is what the selected bake failed to remove. Every Torr·L of it is either getter
+    water-ledger spent (gettered dewar) or pressure on day one (no getter) — and during cold operation it
+    ends up as ice on the coldest optic (~0.1 µm on the cold filter is measurable transmission loss,
+    ~1 µm is severe in the 3 µm band).</p>
+
+    <div class="rrow"><div class="rlab"><b>Water at pinch-off</b><br>by source</div>
+      <div class="rbar" id="barInv"></div></div>
+    <div class="rrow"><div class="rlab"><b>Getter water ledger</b><br>consumed by target life</div>
+      <div class="rbar" id="barLedger"></div></div>
+
+    <table class="doctab">
+      <tr><th>Species</th><th>Λ₀ (W·m⁻²·K⁻¹·Pa⁻¹)</th><th>α used</th><th id="tabQhead">Load at 10⁻³ Torr</th><th>Gettered?</th><th>Cryopumped cold?</th></tr>
+      <tr><td>H₂O</td><td>—</td><td>—</td><td>excluded when cold</td><td>yes (surface ledger)</td><td>yes — becomes ice on optics</td></tr>
+      <tr><td>H₂</td><td id="tabL0h2">4.38</td><td>0.4</td><td id="tabQh2">–</td><td>yes (bulk ledger)</td><td>no</td></tr>
+      <tr><td>CH₄</td><td id="tabL0ch4">1.97</td><td>0.9 (repr.)</td><td id="tabQch4">–</td><td><b>no — sets the ceiling</b></td><td>no (v.p. ~mTorr-class at 80 K)</td></tr>
+      <tr><td>air (equivalent)</td><td id="tabL0air">1.18</td><td>0.9</td><td id="tabQair">–</td><td>partially</td><td>N₂/O₂ marginal</td></tr>
+    </table>
+    <p class="fine">Per Torr of pressure, H₂ conducts 3.7× and CH₄ 1.7× more heat than air — the
+    "air-equivalent" textbook treatment is NOT a conservative bound once the residual gas is getter
+    survivors. The 12 mW / 116 mW anchors (10⁻⁴ / 10⁻³ Torr of air, 40 cm², 5 mm) are the repo's
+    vacuum-requirement basis and are asserted by the parity twin.</p>
+
+    <div class="sect">
+      <h3>References</h3>
+      <ol class="refs">
+        <li>Lord Corp., <i>Aeroglaze Z306 Flat Black Absorptive Polyurethane</i>, datasheet DS3017 Rev.3 (2004) — TML/CVCM, solids, density, per-coat thickness. <a href="https://www.spacematdb.com/spacemat/manudatasheets/Aeroglaze%20z306.pdf">PDF</a> <span class="tag">read</span></li>
+        <li>NASA GSFC Outgassing Database (ASTM E595 TML/CVCM/WVR, 13 000+ entries) — Z306, H70E, 353ND, 2850FT, 2216 lot data queried 2026-08-13. <a href="https://etd.gsfc.nasa.gov/capabilities/outgassing-database/">database</a> <span class="tag">read</span></li>
+        <li>Miron-Salomon et al., "Qualification of Acktar black coatings for space application," ESA ISME09 — Acktar TML/RML/WVR/CVCM incl. post-bake. <a href="https://acktar.com/qualification-acktar-vacuum-black-coating/">summary</a> <span class="tag">citation verified</span></li>
+        <li>Henkel, <i>LOCTITE STYCAST 2850FT</i> TDS (Dec 2024) — density 2.29, TML 0.25/CVCM 0.01 per NASA RP 1124. <a href="https://datasheets.tdx.henkel.com/LOCTITE-STYCAST-2850FT-en_GL.pdf">PDF</a> <span class="tag">read</span></li>
+        <li>Epoxy Technology, <i>EPO-TEK H70E</i> TDS Rev VIII — part specific gravities 1.5/2.5 at 1:1. <a href="https://www.bondingsource.com/techdata/H70E.pdf">PDF</a> <span class="tag">read</span></li>
+        <li>Epoxy Technology, <i>EPO-TEK 353ND</i> TDS — part specific gravities 1.2/1.02 at 10:1. <a href="https://focenter.com/media/wysiwyg/2020/08/353ND_TDS.pdf">PDF</a> <span class="tag">citation verified</span></li>
+        <li>3M, <i>Scotch-Weld Epoxy Adhesive 2216 B/A Gray</i> TDS — TML 0.77/CVCM 0.04/WVR 0.23 per NASA 1124 Rev 4; density 1.3. <a href="https://multimedia.3m.com/mws/media/2366022O/3m-scotch-weld-epoxy-adhesive-2216-b-a-gray.pdf">PDF</a> <span class="tag">citation verified</span></li>
+        <li>Sandia National Labs, SAES St707 getter H₂ capacity &amp; activation data. <a href="https://psec.uchicago.edu/getters/sandia_ST707_getter_data_105402.pdf">PDF</a> <span class="tag">read</span></li>
+        <li>UChicago PSEC getter notes — St707 H₂O capacity estimate. <a href="https://psec.uchicago.edu/getters/H2O_monolayer_v2.pdf">PDF</a> <span class="tag">read</span></li>
+        <li>P. Chiggiato, <i>Outgassing</i>, CERN Accelerator School lecture notes (2017) — 1/t water law, H₂ vs bake, polymer water content. <a href="https://cas.web.cern.ch/sites/default/files/lectures/glumslov-2017/chiggiato.pdf">PDF</a> <span class="tag">read</span></li>
+        <li>P. Chiggiato, "Outgassing properties of vacuum materials for particle accelerators," CERN Yellow Rep. (2020). <a href="https://arxiv.org/abs/2006.07124">arXiv:2006.07124</a> <span class="tag">read</span></li>
+        <li>P. A. Redhead, "Modeling the pump-down of a reversibly adsorbed phase," <i>JVST A</i> 13, 467 (1995); M. Li &amp; H. F. Dylla, <i>JVST A</i> 11, 1702 (1993) — multi-energy surface-water model. <span class="tag">citation verified</span></li>
+        <li>J. Crank, <i>The Mathematics of Diffusion</i>, 2nd ed., Oxford (1975) — plane-sheet desorption series (ch. 4), time-transformation for varying D (ch. 7). <span class="tag">textbook</span></li>
+        <li>Fan et al., <i>Microelectron. Reliab.</i> (2019) (<a href="https://www.sciencedirect.com/science/article/pii/S0026271419311771">link</a>); IEEE ECTC (2008) (<a href="https://ieeexplore.ieee.org/document/4525009/">link</a>) — epoxy water diffusivity D, E_a. <span class="tag">dual-stage evidence</span></li>
+        <li>R. J. Corruccini, "Gaseous heat conduction at low pressures and temperatures," <i>Vacuum</i> 7–8, 19 (1959); Kennard, <i>Kinetic Theory of Gases</i> (1938); Barron &amp; Nellis, <i>Cryogenic Heat Transfer</i> 2nd ed. — free-molecular Λ₀ form and continuum bridge. <a href="https://www.dspe.nl/knowledge/thermomechanics/chapter-2-in-depth/conduction-in-gasses/regime-1-free-molecular-heat-transfer/">DSPE summary</a> <span class="tag">citation verified</span></li>
+        <li>R. E. Honig &amp; H. O. Hook, "Vapor pressure data for some common gases," <i>RCA Review</i> 21, 360 (1960) — ice vapor pressure at 80 K ≪ 10⁻¹⁰ Torr. <span class="tag">citation verified</span></li>
+        <li>AFRL/AEDC, "The Infrared Spectral Signature of Water Ice," DTIC ADA443824 — ice-on-optics thresholds. <a href="https://apps.dtic.mil/sti/pdfs/ADA443824.pdf">PDF</a> <span class="tag">read</span></li>
+        <li>C. Kittel, <i>Introduction to Solid State Physics</i> — θ_D(Cu) = 343 K for the Debye c_p. <span class="tag">textbook</span></li>
+        <li>Grinham &amp; Chew, "A Review of Outgassing and Methods for its Reduction," <i>ASCT</i> 26(5), 95 (2017). <a href="https://www.e-asct.org/journal/view.html?volume=26&amp;number=5&amp;spage=95&amp;vmd=Full">open access</a> <span class="tag">read</span></li>
+      </ol>
+      <p class="fine">Tags: <b>read</b> = source fetched and used directly in this project's sessions;
+      <b>citation verified</b> = numbers cross-checked via a read source (full text unavailable or paywalled);
+      <b>textbook</b> = standard reference. Every constant in the script below carries its source in a comment
+      and a matching entry in <code>research/data/dewar_life_materials.json</code> (REQ-D1); representative
+      values are flagged in both.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+/* =================== physics — mirrors dewar_vacuum_life.py 1:1 ===================
+   Units (REQ-U1): Torr, Torr·L at 295 K, cm (outgassing) / m (heat), eV, K.
+   Every constant: source comment here + entry in research/data/*.json.        */
+const KB_EV = 8.617333e-5;    // Boltzmann, eV/K
+const KB_J  = 1.380649e-23;   // Boltzmann, J/K
+const R_GAS = 8.314462;       // molar gas constant, J/(mol K)
+const NA    = 6.02214076e23;  // Avogadro
+const SIGMA_SB = 5.670374e-8; // Stefan-Boltzmann, W/(m^2 K^4)
+const TORR_PA = 133.322;      // Pa per Torr
+const DAY = 86400, YEAR = 3.156e7, T_ACCOUNT = 295;
+const M_H2O = 18.015e-3, M_CU = 63.546e-3;
+const THETA_D_CU = 343;       // K, Debye temperature of Cu (Kittel)
+/* ideal-gas accounting (computed; outgassing_anchor_rates.json monolayer_conversion) */
+const MOLEC = TORR_PA * 1e-3 / (KB_J * T_ACCOUNT);          // molecules per Torr·L
+const ML_TORRL = 1e15 / MOLEC;                              // 3.05e-5 Torr·L/cm^2/ML
+const MG_H2O = (1e-3 / (M_H2O * 1e3)) * NA / MOLEC;         // 1.02 Torr·L per mg H2O
+
+/* fixed dewar context — baseline_idca.yaml / dewar_life_materials.json
+   cooler_thermal_baseline (representative tactical class, flagged) */
+const T_SHELL = 293, T_COLD = 80, GAP_MM = 5;
+const P_CRIT = 1e-3;          // Torr warm — EOL criterion (VACUUM_REQUIREMENT.md)
+const M_CU_G = 15, EPS_EFF = 0.03, G_LEADS = 0.7e-3;
+const Q_LIFT_80 = 0.6, Q_LIFT_300 = 3.0;                    // W
+const FILTER_CM2 = 2, RHO_ICE = 0.93;                       // ice_on_filter_conversion
+
+/* fixed gas emitters per cm^2 steel — Chiggiato CAS (H2, band 1e-13..3e-12);
+   CH4 ~1e-15 decade-uncertain, non-getterable (outgassing_anchor_rates.json) */
+const Q_H2_CM2 = 1e-12, Q_CH4_CM2 = 1e-15;
+
+/* surface water: Redhead multi-energy — 3 ML, window 0.75–1.15 eV, nu 1e13
+   (Redhead 1995; Li & Dylla 1993). nE=400 matches the Python twin exactly. */
+const SW_ML = 3, SW_E_LO = 0.75, SW_E_HI = 1.15, SW_NU = 1e13, SW_NE = 400;
+const SW_E = Array.from({length: SW_NE}, (_, i) => SW_E_LO + (SW_E_HI - SW_E_LO) * i / (SW_NE - 1));
+
+/* shared water diffusivity, all organics incl. the paint film (flagged
+   assumption, dewar_life_materials.json shared_water_diffusivity) */
+const D_295 = 2e-9, E_A = 0.45;                              // cm^2/s, eV
+const D0 = D_295 / Math.exp(-E_A / (KB_EV * 295));
+const dCoef = T => D0 * Math.exp(-E_A / (KB_EV * T));
+
+/* =================== materials (research/data/dewar_life_materials.json) ===
+   wt = water content in wt% — ASTM E595 WVR except the generic entry
+   (equilibrium moisture). WVR is a 24 h rehydration: biased LOW, flagged. */
+const ADHESIVES = {
+  generic: { label: "Generic epoxy (repo anchor)", rho: 1.15, wt: 1.0,
+             note: "1 wt% equilibrium moisture — the calibrated conservative default" },
+  h70e:    { label: "EPO-TEK H70E", rho: 1.88, wt: 0.25,
+             note: "thermally conductive die attach — WVR 0.25 (GSFC12127)" },
+  "353nd": { label: "EPO-TEK 353ND", rho: 1.18, wt: 0.35,
+             note: "optics/fiber bonding — WVR 0.35 (GSFC29110)" },
+  "2850ft":{ label: "Stycast 2850FT", rho: 2.29, wt: 0.10,
+             note: "silica-filled potting, driest preset — WVR 0.05–0.15 (GSFC)" },
+  "2216":  { label: "Scotch-Weld 2216 gray", rho: 1.30, wt: 0.30,
+             note: "flexible structural, the wet one — WVR 0.21–0.51 (GSFC lots)" },
+};
+const COATINGS = {
+  z306:   { label: "Aeroglaze Z306 paint", rho: 1.12, wt: 0.6, um: 60,
+            note: "polyurethane flat black — WVR 0.3–0.9 GSFC lots, ~28 µm/coat" },
+  acktar: { label: "Acktar vacuum black", rho: 1.8, wt: 2.0, um: 4,
+            note: "inorganic 3–5 µm film — physisorbs 1–4 wt% water (ESA ISME09)" },
+  bare:   { label: "Bare metal shield", rho: 0, wt: 0, um: 0,
+            note: "no film — shield metal counts under internal metal area" },
+};
+/* getter: St707-class dual ledger — H2O 2.4 Torr·L/g surface-limited (PSEC
+   estimate), H2 170 Torr·L/g bulk (Sandia); floor 1e-7 Torr representative.
+   Gram options are representative sizes, not catalog part numbers. */
+const GETTER_CAP_W = 2.4, GETTER_CAP_H = 170, GETTER_FLOOR = 1e-7;
+const GETTERS = {
+  none: { g: 0,    label: "No getter" },
+  g025: { g: 0.25, label: "St707-class, 0.25 g" },
+  g05:  { g: 0.5,  label: "St707-class, 0.5 g" },
+  g1:   { g: 1,    label: "St707-class, 1 g" },
+  g2:   { g: 2,    label: "St707-class, 2 g" },
+};
+/* gas species: gamma, M from CRC; alpha and k near the log-mean gap
+   temperature per gas.py convention (CH4 alpha representative, flagged) */
+const SPECIES = {
+  air: { gamma: 1.40, M: 28.97e-3,  alpha: 0.9, k: 0.0177 },
+  h2:  { gamma: 1.41, M: 2.016e-3,  alpha: 0.4, k: 0.125 },
+  ch4: { gamma: 1.31, M: 16.043e-3, alpha: 0.9, k: 0.021 },
+};
+
+const DEFAULTS = {
+  adhesive: "generic", coating: "z306", getter: "g1",
+  bakeC: 85, bakeDays: 7, storeC: 22,
+  adhV: 0.25, adhA: 4,
+  shieldCm2: 40, coatUm: 60,
+  steelCm2: 300, volL: 0.10,
+  coldK: 80,
+  targetYr: 10,
+  airEquiv: false, surfaceOn: true,
+};
+
+/* time grids — identical to the Python twin */
+const NT_CHART = 240, NT_LIFE = 500, NT_LIFE_BISECT = 160, NT_COOL = 20;
+
+function logspace(lo, hi, n) {
+  const a = Math.log(lo), b = Math.log(hi), out = new Array(n);
+  for (let i = 0; i < n; i++) out[i] = Math.exp(a + (b - a) * i / (n - 1));
+  return out;
+}
+const nearestIdx = (ts, t) => {
+  let bi = 0, bd = Infinity;
+  for (let i = 0; i < ts.length; i++) { const d = Math.abs(ts[i] - t); if (d < bd) { bd = d; bi = i; } }
+  return bi;
+};
+
+/* ---------- Fickian reservoirs (Crank ch. 4; two-stage per ch. 7) ---------- */
+function slabRemainingFrac(X) {
+  let f = 0, norm = 0;
+  for (let n = 0; n < 80; n++) {
+    const m = 2 * n + 1, coef = 8 / ((m * Math.PI) ** 2);
+    f += coef * Math.exp(-((m * Math.PI / 2) ** 2) * Math.min(X, 700));
+    norm += coef;
+  }
+  return Math.min(Math.max(f / norm, 0), 1);
+}
+function reservoirReleased(mg0, L, tb, Tb, ts, Tst) {
+  if (mg0 <= 0 || L <= 0) return ts.map(() => 0);
+  const L2 = L * L, Xb = dCoef(Tb) * tb / L2, fb = slabRemainingFrac(Xb), Ds = dCoef(Tst);
+  return ts.map(t => mg0 * MG_H2O * (fb - slabRemainingFrac(Xb + Ds * t / L2)));
+}
+function reservoirRemaining(mg0, L, tb, Tb) {
+  if (mg0 <= 0 || L <= 0) return 0;
+  return mg0 * MG_H2O * slabRemainingFrac(dCoef(Tb) * tb / (L * L));
+}
+
+/* ---------- surface water (Redhead multi-energy) ---------- */
+function trapzMean(vals) {
+  let s = 0.5 * (vals[0] + vals[vals.length - 1]);
+  for (let i = 1; i < vals.length - 1; i++) s += vals[i];
+  return s / (SW_NE - 1);
+}
+function surfaceReleased(area, tb, Tb, ts, Tst) {
+  const inv0 = SW_ML * ML_TORRL * area;
+  const thb = SW_E.map(e => Math.exp(-tb * SW_NU * Math.exp(-e / (KB_EV * Tb))));
+  const ks = SW_E.map(e => SW_NU * Math.exp(-e / (KB_EV * Tst)));
+  return ts.map(t => inv0 * trapzMean(thb.map((th, i) => th * (1 - Math.exp(-ks[i] * Math.min(t, 1e30))))));
+}
+function surfaceRemaining(area, tb, Tb) {
+  const inv0 = SW_ML * ML_TORRL * area;
+  return inv0 * trapzMean(SW_E.map(e => Math.exp(-tb * SW_NU * Math.exp(-e / (KB_EV * Tb)))));
+}
+
+/* ---------- sealed pressure (sealed_life.py mirror, dual getter ledger) ---------- */
+function prep(s) {
+  return { ...s, bakeS: s.bakeDays * DAY, bakeK: s.bakeC + 273.15, storeK: s.storeC + 273.15 };
+}
+function reservoirParams(p) {
+  const adh = ADHESIVES[p.adhesive], coat = COATINGS[p.coating];
+  return {
+    mgAdh: p.adhV * adh.rho * (adh.wt / 100) * 1e3,
+    LAdh: p.adhV / p.adhA,
+    mgCoat: p.shieldCm2 * (p.coatUm * 1e-4) * coat.rho * (coat.wt / 100) * 1e3,
+    LCoat: p.coatUm * 1e-4,
+  };
+}
+function waterReleased(p, ts) {
+  const r = reservoirParams(p);
+  const tot = reservoirReleased(r.mgAdh, r.LAdh, p.bakeS, p.bakeK, ts, p.storeK);
+  const co = reservoirReleased(r.mgCoat, r.LCoat, p.bakeS, p.bakeK, ts, p.storeK);
+  for (let i = 0; i < ts.length; i++) tot[i] += co[i];
+  if (p.surfaceOn) {
+    const su = surfaceReleased(p.steelCm2, p.bakeS, p.bakeK, ts, p.storeK);
+    for (let i = 0; i < ts.length; i++) tot[i] += su[i];
+  }
+  return tot;
+}
+function pressures(p, ts) {
+  const V = p.volL, Qh2 = Q_H2_CM2 * p.steelCm2, Qch4 = Q_CH4_CM2 * p.steelCm2;
+  const W = waterReleased(p, ts);
+  const g = GETTERS[p.getter].g, capW = GETTER_CAP_W * g, capH = GETTER_CAP_H * g;
+  const out = { w: [], h2: [], ch4: [], tot: [], get: [], ledW: [], ledH: [], _ts: ts };
+  for (let i = 0; i < ts.length; i++) {
+    const t = ts[i], pw = W[i] / V, ph = Qh2 * t / V, pc = Qch4 * t / V;
+    out.w.push(pw); out.h2.push(ph); out.ch4.push(pc); out.tot.push(pw + ph + pc);
+    if (g > 0) {
+      const ovW = Math.max(0, W[i] - capW), ovH = Math.max(0, Qh2 * t - capH);
+      /* getterables sit at the floor, CH4 accumulates, ledger overflow adds */
+      out.get.push(Math.max(GETTER_FLOOR, pc) + (ovW + ovH) / V);
+      out.ledW.push(Math.min(W[i], capW)); out.ledH.push(Math.min(Qh2 * t, capH));
+    } else { out.get.push(pw + ph + pc); out.ledW.push(0); out.ledH.push(0); }
+  }
+  return out;
+}
+function lifeFromCurve(ts, y) {
+  for (let i = 0; i < ts.length; i++) if (y[i] >= P_CRIT) {
+    if (i === 0) return ts[0];
+    const f = (P_CRIT - y[i - 1]) / (y[i] - y[i - 1]);
+    return ts[i - 1] + f * (ts[i] - ts[i - 1]);
+  }
+  return null;
+}
+function lifeToCrit(p, gettered, nt = NT_LIFE) {
+  const ts = logspace(60, 100 * YEAR, nt);
+  const pr = pressures(p, ts);
+  return lifeFromCurve(ts, gettered ? pr.get : pr.tot);
+}
+/* required bake for target life — bisection on log t_bake in [0.05, 200] d.
+   The inverse question is x2.5-determined vs x25 for life-at-fixed-bake
+   (dewar_vacuum_model/REVIEW.md). */
+function requiredBakeDays(p, gettered) {
+  const tgt = p.targetYr * YEAR;
+  const lifeAt = days => {
+    const v = lifeToCrit({ ...p, bakeS: days * DAY }, gettered, NT_LIFE_BISECT);
+    return v == null ? Infinity : v;
+  };
+  if (lifeAt(200) < tgt) return [null, "unreachable"];
+  if (lifeAt(0.05) >= tgt) return [0.05, "no bake needed"];
+  let lo = Math.log(0.05), hi = Math.log(200);
+  for (let i = 0; i < 40; i++) {
+    const mid = 0.5 * (lo + hi);
+    (lifeAt(Math.exp(mid)) >= tgt) ? hi = mid : lo = mid;
+  }
+  return [Math.exp(hi), "ok"];
+}
+
+/* ---------- gas conduction (gas.py mirror; Corruccini + Sherman bridge) ---------- */
+function lambda0(sp) {
+  const s = SPECIES[sp], g = s.gamma;
+  return (g + 1) / (g - 1) * Math.sqrt(R_GAS / (8 * Math.PI * s.M * T_ACCOUNT));
+}
+function gasFluxWm2(P, dT, sp) {
+  if (dT <= 0 || P <= 0) return 0;
+  const s = SPECIES[sp];
+  const qFm = s.alpha * lambda0(sp) * (P * TORR_PA) * dT;
+  const qCt = s.k * dT / (GAP_MM * 1e-3);
+  return 1 / (1 / qFm + 1 / qCt);
+}
+/* species mode: H2 + CH4 carry the cold load (water cryopumped, ice v.p. at
+   80 K << 1e-10 Torr — Honig & Hook 1960). Air-equivalent: total warm P
+   through air coefficients — the textbook curve; NOT a bound (see doc). */
+function heatLoadW(p, ph2, pch4, ptot, dT = null) {
+  const A = p.shieldCm2 * 1e-4;
+  if (dT == null) dT = T_SHELL - p.coldK;
+  if (p.airEquiv) return gasFluxWm2(ptot, dT, "air") * A;
+  return (gasFluxWm2(ph2, dT, "h2") + gasFluxWm2(pch4, dT, "ch4")) * A;
+}
+/* with a healthy getter the floor rides the H2 channel (equilibrium-isotherm
+   species; water sticks essentially irreversibly) */
+function speciesPartials(p, pr, i) {
+  const g = GETTERS[p.getter].g;
+  if (g > 0) {
+    const ovH = Math.max(0, Q_H2_CM2 * p.steelCm2 * pr._ts[i] - GETTER_CAP_H * g) / p.volL;
+    return [GETTER_FLOOR + ovH, pr.ch4[i], pr.get[i]];
+  }
+  return [pr.h2[i], pr.ch4[i], pr.tot[i]];
+}
+
+/* ---------- cooldown (cooldown.py mirror; Debye c_p + RK4) ---------- */
+/* Debye c_p(Cu): grid 4..340 K x 400, inner integral 2000-pt trapezoid —
+   identical discretization to the Python twin */
+const CP_T = Array.from({length: 400}, (_, i) => 4 + (340 - 4) * i / 399);
+const CP_V = CP_T.map(T => {
+  const xUp = THETA_D_CU / T, n = 2000;
+  let s = 0;
+  for (let i = 0; i < n; i++) {
+    const x = 1e-6 + (xUp - 1e-6) * i / (n - 1), ex = Math.exp(x);
+    s += (x ** 4 * ex / ((ex - 1) ** 2)) * ((i === 0 || i === n - 1) ? 0.5 : 1);
+  }
+  return 9 * R_GAS * (T / THETA_D_CU) ** 3 * (s * (xUp - 1e-6) / (n - 1)) / M_CU;
+});
+function cpCu(T) {
+  if (T <= CP_T[0]) return CP_V[0];
+  if (T >= CP_T[399]) return CP_V[399];
+  let i = Math.floor((T - CP_T[0]) / (CP_T[1] - CP_T[0]));
+  i = Math.min(i, 398);
+  const f = (T - CP_T[i]) / (CP_T[i + 1] - CP_T[i]);
+  return CP_V[i] + f * (CP_V[i + 1] - CP_V[i]);
+}
+const qLiftW = T => Math.max(0, Q_LIFT_80 + (Q_LIFT_300 - Q_LIFT_80) / 220 * (T - 80));
+function cooldownMinutes(p, ph2, pch4, ptot) {
+  const A = p.shieldCm2 * 1e-4, m = M_CU_G * 1e-3;
+  const net = T => qLiftW(T) - (EPS_EFF * SIGMA_SB * A * (T_SHELL ** 4 - T ** 4)
+                                + G_LEADS * (T_SHELL - T)
+                                + heatLoadW(p, ph2, pch4, ptot, T_SHELL - T));
+  const rhs = T => -net(T) / (m * cpCu(T));
+  let T = T_SHELL, t = 0;
+  const dt = 2;
+  while (t < 7200) {
+    if (net(T) < 1e-4) return [null, true];
+    const k1 = rhs(T), k2 = rhs(T + 0.5 * dt * k1), k3 = rhs(T + 0.5 * dt * k2), k4 = rhs(T + dt * k3);
+    const Tn = T + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
+    t += dt;
+    if (Tn <= p.coldK) { const f = (T - p.coldK) / (T - Tn); return [(t - dt + f * dt) / 60, false]; }
+    T = Tn;
+  }
+  return [null, true];
+}
+
+/* ---------- full scenario (compute() mirror) ---------- */
+function computeScenario(s) {
+  const p = prep(s);
+  const ts = logspace(DAY, 30 * YEAR, NT_CHART);
+  const pr = pressures(p, ts);
+
+  const heatSp = [], heatAe = [];
+  for (let i = 0; i < NT_CHART; i++) {
+    const [ph2, pch4, ptot] = speciesPartials(p, pr, i);
+    heatSp.push(heatLoadW({ ...p, airEquiv: false }, ph2, pch4, ptot));
+    heatAe.push(heatLoadW({ ...p, airEquiv: true }, ph2, pch4, ptot));
+  }
+
+  const tc = logspace(DAY, 30 * YEAR, NT_COOL);
+  const prc = pressures(p, tc);
+  const coolMin = [], stalled = [];
+  for (let i = 0; i < NT_COOL; i++) {
+    const [ph2, pch4, ptot] = speciesPartials(p, prc, i);
+    const [mns, st] = cooldownMinutes(p, ph2, pch4, ptot);
+    coolMin.push(mns); stalled.push(st);
+  }
+  let stallT = null;
+  for (let i = 0; i < NT_COOL; i++) if (stalled[i]) {
+    stallT = i === 0 ? tc[i] : Math.sqrt(tc[i - 1] * tc[i]);
+    break;
+  }
+  /* display extra (not in parity): the no-getter cooldown comparison */
+  let coolMinNg = null;
+  if (GETTERS[p.getter].g > 0) {
+    const pNg = { ...p, getter: "none" };
+    const prn = pressures(pNg, tc);
+    coolMinNg = [];
+    for (let i = 0; i < NT_COOL; i++) {
+      const [ph2, pch4, ptot] = speciesPartials(pNg, prn, i);
+      coolMinNg.push(cooldownMinutes(pNg, ph2, pch4, ptot)[0]);
+    }
+  }
+
+  const lifeNg = lifeToCrit(p, false);
+  const lifeG = lifeToCrit(p, true);
+  const [reqBake, reqNote] = requiredBakeDays(p, GETTERS[p.getter].g > 0);
+
+  const r = reservoirParams(p);
+  const invAdh = reservoirRemaining(r.mgAdh, r.LAdh, p.bakeS, p.bakeK);
+  const invCoat = reservoirRemaining(r.mgCoat, r.LCoat, p.bakeS, p.bakeK);
+  const invSurf = p.surfaceOn ? surfaceRemaining(p.steelCm2, p.bakeS, p.bakeK) : 0;
+
+  const it = nearestIdx(ts, p.targetYr * YEAR);
+  const Wt = waterReleased(p, [p.targetYr * YEAR])[0];
+  const iceMg = Wt / MG_H2O;
+  const iceUm = iceMg * 1e-3 / (RHO_ICE * FILTER_CM2) * 1e4;
+  const g = GETTERS[p.getter].g;
+  return {
+    p, ts, pr, heatSp, heatAe, tc, coolMin, coolMinNg, stalled, stallT,
+    lifeNg, lifeG, reqBake, reqNote, invAdh, invCoat, invSurf,
+    mgAdh0: r.mgAdh, mgCoat0: r.mgCoat,
+    heatSpT: heatSp[it], heatAeT: heatAe[it], iceMg, iceUm,
+    ledWT: g ? pr.ledW[it] / (GETTER_CAP_W * g) : 0,
+    ledHT: g ? pr.ledH[it] / (GETTER_CAP_H * g) : 0,
+  };
+}
+
+/* parity hook — same keys as the Python twin's PARITY block (REQ-U2) */
+window.__parity = function () {
+  const r = computeScenario({ ...DEFAULTS });
+  const at = (t, arr) => arr[nearestIdx(r.ts, t)];
+  const dT = T_SHELL - T_COLD, A = r.p.shieldCm2 * 1e-4;
+  const c0 = 1.15 * 0.01 * 1e3 * MG_H2O;    // generic-epoxy c0, Torr·L/cm^3
+  return {
+    lambda0_air: lambda0("air"), lambda0_h2: lambda0("h2"), lambda0_ch4: lambda0("ch4"),
+    q_air_1e4_mW: gasFluxWm2(1e-4, dT, "air") * A * 1e3,
+    q_air_1e3_mW: gasFluxWm2(1e-3, dT, "air") * A * 1e3,
+    adh_q1h: c0 * Math.sqrt(dCoef(358.15) / (Math.PI * 3600)),
+    cp_cu_300: cpCu(300),
+    inv_surf: r.invSurf, inv_adh: r.invAdh, inv_coat: r.invCoat,
+    p_nog_1d: at(DAY, r.pr.tot), p_nog_1yr: at(YEAR, r.pr.tot), p_nog_10yr: at(10 * YEAR, r.pr.tot),
+    p_get_1yr: at(YEAR, r.pr.get), p_get_10yr: at(10 * YEAR, r.pr.get),
+    life_ng_days: (r.lifeNg || 0) / DAY,
+    life_g_years: (r.lifeG || 0) / YEAR,
+    req_bake_days: r.reqBake == null ? -1 : r.reqBake,
+    heat_sp_10yr_mW: r.heatSpT * 1e3, heat_ae_10yr_mW: r.heatAeT * 1e3,
+    ice_10yr_um: r.iceUm,
+    led_w_pct: r.ledWT * 100, led_h_pct: r.ledHT * 100,
+    cool_1d_min: r.coolMin[0] == null ? -1 : r.coolMin[0],
+    cool_last_min: r.coolMin[NT_COOL - 1] == null ? -1 : r.coolMin[NT_COOL - 1],
+    stall_year: (r.stallT || 0) / YEAR,
+  };
+};
+
+/* ---------------- formatting ---------------- */
+const SUP = { "-":"⁻","0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹" };
+const sup10 = e => "10" + String(e).split("").map(c => SUP[c]).join("");
+function fmtP(P) {
+  if (!isFinite(P) || P <= 0) return "–";
+  const e = Math.floor(Math.log10(P)), m = P / 10 ** e;
+  if (e >= 0 && e <= 3) return (Math.round(P * 100) / 100).toLocaleString();
+  return (m >= 9.95 ? "1×" + sup10(e + 1) : m.toFixed(1) + "×" + sup10(e));
+}
+function fmtLife(sec) {
+  if (sec == null || !isFinite(sec)) return "> 30 yr";
+  if (sec < 3600) return (sec / 60).toPrecision(3) + " min";
+  if (sec < 2 * DAY) return (sec / 3600).toPrecision(3) + " h";
+  if (sec < 0.5 * YEAR) return (sec / DAY).toPrecision(3) + " d";
+  return (sec / YEAR).toPrecision(3) + " yr";
+}
+function fmtW(W) {
+  if (W < 1e-4) return (W * 1e6).toPrecision(2) + " µW";
+  if (W < 1) return (W * 1e3).toPrecision(3) + " mW";
+  return W.toPrecision(3) + " W";
+}
+const fmtTL = v => !(v > 1e-12) ? "~0" : (v >= 0.01 ? (+v.toPrecision(3)).toLocaleString() : fmtP(v));
+const fmtPct = f => f * 100 < 0.01 ? "<0.01" : (+(f * 100).toPrecision(3)).toString();
+function fmtVal(v) {
+  if (!isFinite(v)) return "";
+  if (v >= 1000) return String(Math.round(v));
+  return String(+v.toPrecision(v >= 1 ? 4 : 3));
+}
+
+/* ---------------- controls ---------------- */
+const state = { ...DEFAULTS };
+{
+  const box = document.getElementById("hardware");
+  const mk = (label, key, table, getLabel) => {
+    const div = document.createElement("div");
+    div.className = "ctl";
+    const opts = Object.entries(table)
+      .map(([k, v]) => `<option value="${k}">${getLabel(v)}</option>`).join("");
+    div.innerHTML = `<label>${label}</label>
+      <select class="sel" id="sel_${key}" aria-label="${label}">${opts}</select>
+      <div class="fine" id="fine_${key}"></div>`;
+    box.appendChild(div);
+    const sel = div.querySelector("select");
+    sel.value = state[key];
+    sel.addEventListener("change", () => { state[key] = sel.value; recompute(); });
+  };
+  mk("Adhesive / potting", "adhesive", ADHESIVES, v => v.label);
+  mk("Cold-shield black coating", "coating", COATINGS, v => v.label);
+  mk("Getter", "getter", GETTERS, v => v.label);
+}
+
+const PARAMS = [
+  { key: "bakeC", label: "Bake temperature", unit: "°C", lo: 60, hi: 125, def: 85,
+    note: "bake hotter beats bake longer — each decade of time buys only ~0.07 eV of desorption front" },
+  { key: "bakeDays", label: "Bake duration", unit: "d", lo: 0.5, hi: 60, def: 7 },
+  { key: "storeC", label: "Storage temperature", unit: "°C", lo: 5, hi: 71, def: 22,
+    note: "warm storage accelerates the reservoirs — 71 °C is the classic storage-soak corner" },
+  { key: "adhV", label: "Adhesive volume", unit: "cm³", lo: 0.02, hi: 2, def: 0.25 },
+  { key: "adhA", label: "Adhesive vent area", unit: "cm²", lo: 0.5, hi: 20, def: 4,
+    note: "the area water actually escapes through — a buried bond line vents at its perimeter: small A, deep L = V/A" },
+  { key: "shieldCm2", label: "Cold-shield area", unit: "cm²", lo: 10, hi: 100, def: 40,
+    note: "one knob, two roles: the coated surface AND the cold area gas conduction acts on" },
+  { key: "coatUm", label: "Coating thickness", unit: "µm", lo: 2, hi: 150, def: 60 },
+  { key: "steelCm2", label: "Internal metal area", unit: "cm²", lo: 100, hi: 1000, def: 300 },
+  { key: "volL", label: "Free volume", unit: "L", lo: 0.02, hi: 0.5, def: 0.10 },
+  { key: "coldK", label: "FPA / cold-space temperature", unit: "K", lo: 80, hi: 150, def: 80,
+    note: "HOT-detector trade — a higher setpoint buys cooler lift and ΔT margin; above ~140 K ice barely sticks" },
+  { key: "targetYr", label: "Target sealed life", unit: "yr", lo: 1, hi: 30, def: 10 },
+];
+const ctlBox = document.getElementById("controls");
+for (const p of PARAMS) {
+  state[p.key] = p.def;
+  const toDisp = p.toDisp || (v => v), fromDisp = p.fromDisp || (v => v);
+  const div = document.createElement("div");
+  div.className = "ctl";
+  div.innerHTML = `<label>${p.label}
+      <span class="valrow"><input class="val" type="text" inputmode="decimal" id="t_${p.key}"
+        aria-label="${p.label} value"><span class="unit">${p.unit}</span></span></label>
+    <input type="range" min="0" max="1000" id="s_${p.key}" aria-label="${p.label}">
+    ${p.note ? `<div class="fine">${p.note}</div>` : ""}`;
+  ctlBox.appendChild(div);
+  const sld = div.querySelector("input[type=range]");
+  const txt = div.querySelector("input.val");
+  const syncText = () => { if (document.activeElement !== txt) txt.value = fmtVal(toDisp(state[p.key])); };
+  const syncSlider = () => { sld.value = Math.round(1000 * Math.log(state[p.key] / p.lo) / Math.log(p.hi / p.lo)); };
+  syncSlider(); syncText();
+  sld.addEventListener("input", () => {
+    state[p.key] = p.lo * Math.pow(p.hi / p.lo, sld.value / 1000);
+    syncText();
+    recompute();
+  });
+  txt.addEventListener("keydown", ev => { if (ev.key === "Enter") txt.blur(); });
+  txt.addEventListener("change", () => {
+    const raw = parseFloat(txt.value.replace(/,/g, ""));
+    if (isFinite(raw) && raw > 0) {
+      state[p.key] = Math.min(p.hi, Math.max(p.lo, fromDisp(raw)));
+      syncSlider();
+      recompute();
+    }
+    txt.blur();
+    syncText();
+  });
+}
+/* air-equivalent heat-load toggle (default OFF: species-resolved is the honest default) */
+{
+  const div = document.createElement("div");
+  div.className = "ctl";
+  div.innerHTML = `<label class="ck"><input type="checkbox" id="aeChk">
+      <span>Air-equivalent heat load<br><span class="fine">total warm pressure through air's Λ₀ — the
+      textbook curve; NOT a bound (H₂/CH₄ conduct 3.7×/1.7× more per Torr)</span></span></label>
+    <div class="fine" id="aeNote" style="margin-top:4px"></div>`;
+  ctlBox.appendChild(div);
+  div.querySelector("#aeChk").addEventListener("change", ev => {
+    state.airEquiv = ev.target.checked;
+    recompute();
+  });
+}
+/* surface-water toggle (default ON — the walls exist whether you like it or not) */
+{
+  const div = document.createElement("div");
+  div.className = "ctl";
+  div.innerHTML = `<label class="ck"><input type="checkbox" id="swChk" checked>
+      <span>Surface water on internal metal<br><span class="fine">3 monolayers over a 0.75–1.15 eV
+      Redhead window on the internal-metal area</span></span></label>
+    <div class="fine" id="swNote" style="margin-top:4px"></div>`;
+  ctlBox.appendChild(div);
+  div.querySelector("#swChk").addEventListener("change", ev => {
+    state.surfaceOn = ev.target.checked;
+    recompute();
+  });
+}
+
+/* ---------------- svg helpers + chart factory (bottleneck_pumpdown pattern) ---------------- */
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function interpLog(X, Y, x) {
+  if (x <= X[0]) return Y[0];
+  if (x >= X[X.length - 1]) return Y[Y.length - 1];
+  let lo = 0, hi = X.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; (X[m] <= x ? lo = m : hi = m); }
+  const f = (Math.log(x) - Math.log(X[lo])) / (Math.log(X[hi]) - Math.log(X[lo]));
+  const a = Math.max(Y[lo], 1e-300), b = Math.max(Y[hi], 1e-300);
+  return Math.exp(Math.log(a) + f * (Math.log(b) - Math.log(a)));
+}
+function makeChart(rootId, legId, cfg) {
+  const root = document.getElementById(rootId);
+  const W = cfg.W || 1000, H = cfg.H || 430, mL = 56, mR = 16, mT = 14, mB = 46;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, root);
+  const clipId = rootId + "_clip";
+  const defs = el("defs", {}, svg);
+  const cp = el("clipPath", { id: clipId }, defs);
+  el("rect", { x: mL, y: mT, width: W - mL - mR, height: H - mT - mB }, cp);
+  const gGrid = el("g", {}, svg);
+  const gData = el("g", { "clip-path": `url(#${clipId})` }, svg);
+  const gAnno = el("g", {}, svg);
+  const tip = document.createElement("div");
+  tip.className = "tip"; root.appendChild(tip);
+
+  let M = null;
+  const xPix = v => mL + (Math.log10(v) - Math.log10(M.x0)) / (Math.log10(M.x1) - Math.log10(M.x0)) * (W - mL - mR);
+  const yPix = v => mT + (Math.log10(M.y1) - Math.log10(v)) / (Math.log10(M.y1) - Math.log10(M.y0)) * (H - mT - mB);
+  function decades(a, b) {
+    const out = [];
+    for (let e = Math.ceil(Math.log10(a) - 1e-9); e <= Math.floor(Math.log10(b) + 1e-9); e++) out.push(e);
+    return out;
+  }
+  function draw(model) {
+    M = model;
+    gGrid.innerHTML = gData.innerHTML = gAnno.innerHTML = "";
+    const xd = decades(M.x0, M.x1), yd = decades(M.y0, M.y1);
+    const step = (n, px, min) => Math.max(1, Math.ceil(min / (px / Math.max(n, 1))));
+    const xStep = step(xd.length, W - mL - mR, 46);
+    const yStep = step(yd.length, H - mT - mB, 26);
+    for (const e of xd) {
+      const x = xPix(10 ** e);
+      el("line", { x1: x, y1: mT, x2: x, y2: H - mB, stroke: "var(--grid)", "stroke-width": 1 }, gGrid);
+      if (((e % xStep) + xStep) % xStep === 0) {
+        const t = el("text", { x, y: H - mB + 16, "text-anchor": "middle", "font-size": 11,
+                               fill: "var(--muted)", style: "font-variant-numeric:tabular-nums" }, gGrid);
+        t.textContent = cfg.xTick ? cfg.xTick(e) : sup10(e);
+      }
+    }
+    for (const e of yd) {
+      const y = yPix(10 ** e);
+      el("line", { x1: mL, y1: y, x2: W - mR, y2: y, stroke: "var(--grid)", "stroke-width": 1 }, gGrid);
+      if (((e % yStep) + yStep) % yStep === 0) {
+        const t = el("text", { x: mL - 6, y: y + 3.5, "text-anchor": "end", "font-size": 11,
+                               fill: "var(--muted)", style: "font-variant-numeric:tabular-nums" }, gGrid);
+        t.textContent = cfg.yTick ? cfg.yTick(e) : sup10(e);
+      }
+    }
+    el("line", { x1: mL, y1: H - mB, x2: W - mR, y2: H - mB, stroke: "var(--baseline)", "stroke-width": 1 }, gGrid);
+    el("line", { x1: mL, y1: mT, x2: mL, y2: H - mB, stroke: "var(--baseline)", "stroke-width": 1 }, gGrid);
+    const xl = el("text", { x: mL + (W - mL - mR) / 2, y: H - 8, "text-anchor": "middle", "font-size": 11.5, fill: "var(--text-2)" }, gGrid);
+    xl.textContent = cfg.xLabel;
+    const yl = el("text", { x: 12, y: mT + (H - mT - mB) / 2, "font-size": 11.5, fill: "var(--text-2)",
+                            transform: `rotate(-90 12 ${mT + (H - mT - mB) / 2})`, "text-anchor": "middle" }, gGrid);
+    yl.textContent = cfg.yLabel;
+    for (const s of M.series) {
+      let dPath = "", pen = false;
+      for (let i = 0; i < s.X.length; i++) {
+        const vx = s.X[i], vy = s.Y[i];
+        if (!(vx > 0 && vy > 0 && isFinite(vx) && isFinite(vy))) { pen = false; continue; }
+        dPath += (pen ? "L" : "M") + xPix(vx).toFixed(1) + " " + yPix(vy).toFixed(1);
+        pen = true;
+      }
+      el("path", { d: dPath, fill: "none", stroke: s.color, "stroke-width": s.w || 2,
+                   "stroke-linejoin": "round", "stroke-linecap": "round",
+                   ...(s.dash ? { "stroke-dasharray": s.dash } : {}) }, gData);
+    }
+    for (const v of (M.vmarks || [])) {
+      if (!(v.x > M.x0 && v.x < M.x1)) continue;
+      const x = xPix(v.x);
+      el("line", { x1: x, y1: mT, x2: x, y2: H - mB, stroke: v.color || "var(--series-3)",
+                   "stroke-width": 1.4, "stroke-dasharray": "4 4" }, gAnno);
+      const t = el("text", { x: x + 4, y: v.ty || (H - mB - 5), "font-size": 10, fill: v.color || "var(--series-3)" }, gAnno);
+      t.textContent = v.text;
+    }
+    for (const h of (M.hlines || [])) {
+      if (!(h.y > M.y0 && h.y < M.y1)) continue;
+      const y = yPix(h.y);
+      el("line", { x1: mL, y1: y, x2: W - mR, y2: y, stroke: h.color || "var(--muted)",
+                   "stroke-width": 1.2, "stroke-dasharray": "4 4" }, gAnno);
+      const t = el("text", { x: W - mR - 4, y: y - 4, "text-anchor": "end", "font-size": 10,
+                             fill: h.color || "var(--muted)" }, gAnno);
+      t.textContent = h.text;
+    }
+  }
+  const hov = el("line", { stroke: "var(--muted)", "stroke-width": 1, visibility: "hidden" }, gAnno);
+  svg.addEventListener("mousemove", ev => {
+    if (!M) return;
+    const r = svg.getBoundingClientRect();
+    const px = (ev.clientX - r.left) / r.width * W;
+    if (px < mL || px > W - mR) { tip.style.display = "none"; hov.setAttribute("visibility", "hidden"); return; }
+    const x = 10 ** (Math.log10(M.x0) + (px - mL) / (W - mL - mR) * (Math.log10(M.x1) - Math.log10(M.x0)));
+    hov.setAttribute("x1", px); hov.setAttribute("x2", px);
+    hov.setAttribute("y1", mT); hov.setAttribute("y2", H - mB);
+    hov.setAttribute("visibility", "visible");
+    let html = `<div class="t">${cfg.xTip(x)}</div>`;
+    for (const s of M.series) {
+      const y = interpLog(s.X, s.Y, x);
+      if (!(y > 0) || !isFinite(y)) continue;
+      html += `<div class="row"><span class="sw" style="background:${s.color}"></span>${s.name}: <b>${cfg.yTip(y)}</b></div>`;
+    }
+    tip.innerHTML = html;
+    tip.style.display = "block";
+    const rw = root.getBoundingClientRect();
+    let tx = (ev.clientX - rw.left) + 14;
+    if (tx + tip.offsetWidth > rw.width - 8) tx = (ev.clientX - rw.left) - tip.offsetWidth - 14;
+    tip.style.left = tx + "px";
+    tip.style.top = Math.max(4, ev.clientY - rw.top - tip.offsetHeight - 10) + "px";
+  });
+  svg.addEventListener("mouseleave", () => { tip.style.display = "none"; hov.setAttribute("visibility", "hidden"); });
+
+  const leg = document.getElementById(legId);
+  function setLegend(items) {
+    leg.innerHTML = "";
+    for (const it of items) {
+      const d = document.createElement("span");
+      d.className = "it";
+      d.innerHTML = `<svg viewBox="0 0 22 8"><line x1="1" y1="4" x2="21" y2="4" stroke="${it.color}"
+        stroke-width="2.5" ${it.dash ? `stroke-dasharray="${it.dash}"` : ""}/></svg>${it.name}`;
+      leg.appendChild(d);
+    }
+  }
+  return { draw, setLegend };
+}
+
+/* x axis in years so the decade ticks read 10⁻² … 10 yr */
+const yrTick = e => sup10(e);
+const c1 = makeChart("chart1", "leg1", {
+  W: 1000, H: 440,
+  xLabel: "storage time after pinch-off (years) — fixed 1 day to 30 years",
+  yLabel: "warm pressure (Torr)",
+  xTip: x => "t = " + fmtLife(x * YEAR), yTip: y => fmtP(y) + " Torr", xTick: yrTick,
+});
+const c2 = makeChart("chart2", "leg2", {
+  W: 1000, H: 400,
+  xLabel: "storage time after pinch-off (years)",
+  yLabel: "gas heat load on cold space (W)",
+  xTip: x => "t = " + fmtLife(x * YEAR), yTip: y => fmtW(y), xTick: yrTick,
+});
+const c3 = makeChart("chart3", "leg3", {
+  W: 1000, H: 360,
+  xLabel: "storage time after pinch-off (years) — curve ends where the cooler stalls",
+  yLabel: "cooldown to setpoint (min)",
+  xTip: x => "t = " + fmtLife(x * YEAR), yTip: y => y.toPrecision(3) + " min", xTick: yrTick,
+});
+
+/* ---------------- schematic (static cross-section, labels live) ---------------- */
+function drawSchem(p, r) {
+  const svg = document.getElementById("schem");
+  svg.innerHTML = "";
+  const line = "var(--text-2)";
+  const cx = 300, top = 40, botY = 240;
+  /* vacuum shell */
+  el("rect", { x: cx - 160, y: top, width: 320, height: botY - top, rx: 14,
+               fill: "none", stroke: line, "stroke-width": 1.8 }, svg);
+  /* window on the shell */
+  el("rect", { x: cx - 34, y: top - 5, width: 68, height: 10, rx: 3,
+               fill: "var(--band)", stroke: line, "stroke-width": 1.2 }, svg);
+  el("text", { x: cx, y: top - 12, "text-anchor": "middle", "font-size": 11, fill: "var(--text-2)" }, svg)
+    .textContent = "window (293 K shell)";
+  /* cold shield — coated interior */
+  const shield = { x: cx - 105, y: top + 42, w: 210, h: 132 };
+  el("rect", { x: shield.x, y: shield.y, width: shield.w, height: shield.h, rx: 9,
+               fill: "none", stroke: "var(--text-1)", "stroke-width": 4, opacity: 0.85 }, svg);
+  el("text", { x: cx, y: shield.y + 16, "text-anchor": "middle", "font-size": 11, fill: "var(--text-2)", id: "schemCoat" }, svg);
+  /* cold filter aperture on the shield */
+  el("rect", { x: cx - 22, y: shield.y - 4, width: 44, height: 8, rx: 2,
+               fill: "var(--series-1)", opacity: 0.55 }, svg);
+  el("text", { x: cx + 30, y: shield.y - 8, "font-size": 10.5, fill: "var(--muted)" }, svg)
+    .textContent = "cold filter (ice lands here)";
+  /* FPA + adhesive dabs */
+  el("rect", { x: cx - 44, y: shield.y + 74, width: 88, height: 20, rx: 3,
+               fill: "var(--band)", stroke: line, "stroke-width": 1.4 }, svg);
+  el("text", { x: cx, y: shield.y + 88, "text-anchor": "middle", "font-size": 10.5, fill: "var(--text-2)" }, svg)
+    .textContent = "FPA, " + Math.round(p.coldK) + " K";
+  el("circle", { cx: cx - 50, cy: shield.y + 96, r: 5, fill: "var(--series-2)", opacity: 0.8 }, svg);
+  el("circle", { cx: cx + 50, cy: shield.y + 96, r: 5, fill: "var(--series-2)", opacity: 0.8 }, svg);
+  el("text", { x: cx, y: shield.y + 116, "text-anchor": "middle", "font-size": 10.5, fill: "var(--muted)", id: "schemAdh" }, svg);
+  /* cold finger */
+  el("rect", { x: cx - 12, y: shield.y + shield.h, width: 24, height: botY - shield.y - shield.h,
+               fill: "none", stroke: line, "stroke-width": 1.5 }, svg);
+  el("text", { x: cx, y: botY + 16, "text-anchor": "middle", "font-size": 10.5, fill: "var(--muted)" }, svg)
+    .textContent = "cold finger → cryocooler (" + qLiftW(p.coldK).toPrecision(2)
+      + " W lift at " + Math.round(p.coldK) + " K)";
+  /* getter pill — in the strip between shield bottom and shell floor */
+  el("ellipse", { cx: cx - 87, cy: botY - 13, rx: 13, ry: 7,
+                  fill: "var(--series-3)", opacity: 0.75 }, svg);
+  el("text", { x: cx - 70, y: botY - 9, "font-size": 10.5, fill: "var(--muted)", id: "schemGet" }, svg);
+  /* gap annotation — bottom-right corner inside the shell, clear of the filter label */
+  el("text", { x: cx + 150, y: shield.y + shield.h + 18, "font-size": 10.5, fill: "var(--muted)", "text-anchor": "end" }, svg)
+    .textContent = "vacuum gap 5 mm";
+  /* right-side live numbers */
+  const rx = 480;
+  const lines = [
+    ["Sealed at pinch-off", "≤ 10⁻⁵ Torr"],
+    ["Shield / coated area", fmtVal(p.shieldCm2) + " cm²"],
+    ["Free volume", fmtVal(p.volL) + " L"],
+    ["FPA setpoint", Math.round(p.coldK) + " K"],
+    ["EOL criterion", "10⁻³ Torr warm"],
+  ];
+  lines.forEach((L, i) => {
+    el("text", { x: rx, y: 84 + i * 22, "font-size": 11.5, fill: "var(--text-2)" }, svg).textContent = L[0];
+    const t = el("text", { x: rx + 250, y: 84 + i * 22, "font-size": 11.5, "text-anchor": "end",
+                           fill: "var(--text-1)", "font-weight": 600 }, svg);
+    t.textContent = L[1];
+  });
+  document.getElementById("schemCoat").textContent =
+    "cold shield — " + COATINGS[p.coating].label;
+  document.getElementById("schemAdh").textContent =
+    "adhesive: " + ADHESIVES[p.adhesive].label.split(" (")[0];
+  document.getElementById("schemGet").textContent =
+    GETTERS[p.getter].g > 0 ? "St707 " + GETTERS[p.getter].g + " g" : "no getter";
+}
+
+/* ---------------- live budget bars ---------------- */
+function setBar(id, segs, mark) {
+  const bar = document.getElementById(id);
+  bar.innerHTML = "";
+  let acc = 0;
+  for (const s of segs) {
+    if (s.w <= 0.4) { acc += Math.max(s.w, 0); continue; }
+    const d = document.createElement("div");
+    d.className = "rseg";
+    d.style.left = acc + "%"; d.style.width = s.w + "%"; d.style.background = s.color;
+    if (s.w > 9) d.innerHTML = `<span>${s.text}</span>`;
+    bar.appendChild(d);
+    acc += s.w;
+  }
+  if (mark && mark.pos > 0 && mark.pos <= 100) {
+    const m = document.createElement("div");
+    m.className = "rmark"; m.style.left = mark.pos + "%";
+    bar.appendChild(m);
+    const n = document.createElement("div");
+    n.className = "rnote"; n.style.left = mark.pos + "%"; n.textContent = mark.text;
+    bar.appendChild(n);
+  }
+}
+
+/* ---------------- recompute ---------------- */
+function recompute() {
+  const r = computeScenario(state);
+  const p = r.p;
+  const g = GETTERS[p.getter].g;
+  const adh = ADHESIVES[p.adhesive], coat = COATINGS[p.coating];
+  const rp = reservoirParams(p);
+
+  /* selector fine lines */
+  document.getElementById("fine_adhesive").textContent =
+    adh.note + " · ρ " + adh.rho + " g/cm³ · reservoir " + fmtTL(rp.mgAdh * MG_H2O)
+    + " Torr·L at current volume · τ₁(store) " + fmtLife(4 * rp.LAdh ** 2 / (Math.PI ** 2 * dCoef(p.storeK)));
+  document.getElementById("fine_coating").textContent = coat.rho > 0
+    ? coat.note + " · ρ " + coat.rho + " g/cm³ · reservoir " + fmtTL(rp.mgCoat * MG_H2O)
+      + " Torr·L at " + fmtVal(p.shieldCm2) + " cm² × " + fmtVal(p.coatUm) + " µm"
+    : coat.note;
+  document.getElementById("fine_getter").textContent = g > 0
+    ? "dual ledger: water " + fmtTL(GETTER_CAP_W * g) + " Torr·L (surface-limited est.) · H₂ "
+      + fmtTL(GETTER_CAP_H * g) + " Torr·L (bulk, Sandia) · floor 10⁻⁷ Torr"
+    : "nothing absorbs water or H₂ after pinch-off — watch the no-getter life";
+
+  /* toggle notes */
+  const it = nearestIdx(r.ts, p.targetYr * YEAR);
+  document.getElementById("aeNote").textContent = (p.airEquiv
+    ? "showing the air-equivalent curve as primary — species-resolved at target would be " + fmtW(r.heatSpT)
+    : "species-resolved primary (H₂ + CH₄ carry the cold load) — air-equivalent at target would be " + fmtW(r.heatAeT));
+  document.getElementById("swNote").textContent = p.surfaceOn
+    ? "pre-bake inventory " + fmtTL(SW_ML * ML_TORRL * p.steelCm2) + " Torr·L on "
+      + fmtVal(p.steelCm2) + " cm² — " + fmtTL(r.invSurf) + " Torr·L survives the selected bake"
+    : "off — internal metal treated as perfectly dry";
+
+  /* hero + results */
+  const lifeAct = g > 0 ? r.lifeG : r.lifeNg;
+  document.getElementById("tileLife").textContent = fmtLife(lifeAct);
+  const ch4Ceil = P_CRIT * p.volL / (Q_CH4_CM2 * p.steelCm2);
+  document.getElementById("tileLifeNote").textContent = g > 0
+    ? (r.lifeG != null && Math.abs(r.lifeG / ch4Ceil - 1) < 0.25
+        ? "CH₄-limited — the getter is blind to it; ceiling " + fmtLife(ch4Ceil) + " for this volume/steel area"
+        : "getter-ledger-limited — water/H₂ overflow, not CH₄, ends this life")
+    : "no getter selected — H₂ from the steel owns the budget";
+  document.getElementById("tileLifeNg").textContent = fmtLife(r.lifeNg);
+  document.getElementById("tileLifeNgNote").textContent =
+    "H₂ alone: " + fmtP(Q_H2_CM2 * p.steelCm2) + " Torr·L/s into " + fmtVal(p.volL)
+    + " L reaches 10⁻³ Torr in " + fmtLife(P_CRIT * p.volL / (Q_H2_CM2 * p.steelCm2))
+    + " — why getters are universal in sealed dewars";
+  document.getElementById("tileBake").textContent =
+    r.reqBake == null ? "unreachable" : (r.reqNote === "no bake needed" ? "≤ 0.05 d" : r.reqBake.toPrecision(3) + " d");
+  document.getElementById("tileBakeNote").textContent =
+    (r.reqBake == null
+      ? (g > 0 ? "even 200 d cannot reach " + fmtVal(p.targetYr) + " yr — the CH₄ ceiling ("
+                 + fmtLife(ch4Ceil) + ") binds, and no bake touches CH₄"
+               : "without a getter no bake reaches " + fmtVal(p.targetYr) + " yr — H₂ binds")
+      : "at " + fmtVal(p.bakeC) + " °C, for the " + fmtVal(p.targetYr) + " yr target — ")
+    + (r.reqBake != null ? "this inverse answer is ×2.5-determined vs ×25 for life-at-fixed-bake (REVIEW.md)" : "");
+  const invTot = r.invSurf + r.invAdh + r.invCoat;
+  document.getElementById("tileInv").textContent = fmtTL(invTot) + " Torr·L";
+  document.getElementById("tileInvNote").textContent =
+    "surface " + fmtTL(r.invSurf) + " + adhesive " + fmtTL(r.invAdh) + " + coating " + fmtTL(r.invCoat)
+    + " (pre-bake: " + fmtTL(SW_ML * ML_TORRL * p.steelCm2 * (p.surfaceOn ? 1 : 0)) + " / "
+    + fmtTL(rp.mgAdh * MG_H2O) + " / " + fmtTL(rp.mgCoat * MG_H2O) + ")";
+  document.getElementById("tileLedger").textContent = g > 0
+    ? "H₂O " + fmtPct(r.ledWT) + " % · H₂ " + fmtPct(r.ledHT) + " %"
+    : "—";
+  document.getElementById("tileLedgerNote").textContent = g > 0
+    ? "of " + fmtTL(GETTER_CAP_W * g) + " Torr·L water / " + fmtTL(GETTER_CAP_H * g)
+      + " Torr·L H₂ capacity at " + fmtVal(p.targetYr) + " yr"
+    : "no getter selected";
+  document.getElementById("tileHeat").textContent = fmtW(p.airEquiv ? r.heatAeT : r.heatSpT);
+  document.getElementById("tileHeatNote").textContent =
+    (p.airEquiv ? "air-equivalent treatment; species-resolved gives " + fmtW(r.heatSpT)
+                : "species-resolved (H₂ + CH₄); air-equivalent gives " + fmtW(r.heatAeT))
+    + " — vs 12 mW design allocation at 10⁻⁴ Torr";
+  document.getElementById("tileIce").textContent =
+    r.iceUm < 1e-4 ? "negligible" : (+r.iceUm.toPrecision(2)) + " µm";
+  document.getElementById("tileIceNote").textContent =
+    fmtTL(r.iceMg * MG_H2O) + " Torr·L of water released by " + fmtVal(p.targetYr)
+    + " yr, all condensed on the " + FILTER_CM2 + " cm² cold filter (worst case) — 0.1 µm measurable, ~1 µm severe"
+    + (p.coldK >= 140 ? "; at ≥140 K setpoints ice barely sticks (v.p. ~10⁻⁶ Torr) — treat as an upper bound" : "");
+  const c0m = r.coolMin[0], cTm = r.coolMin[nearestIdx(r.tc, p.targetYr * YEAR)];
+  document.getElementById("tileCool").textContent =
+    (c0m == null ? "stalled" : c0m.toPrecision(3) + " min") + " → "
+    + (cTm == null ? "stalled" : cTm.toPrecision(3) + " min");
+  document.getElementById("tileCoolNote").textContent = r.stallT != null
+    ? "cooler stalls entirely at " + fmtLife(r.stallT) + " — the classic soft-dewar end state"
+    : "no stall within 30 yr at these settings";
+
+  /* budget bars */
+  const capW = GETTER_CAP_W * g;
+  const scale = Math.max(invTot, capW, P_CRIT * p.volL) * 1.06 + 1e-12;
+  setBar("barInv", [
+    { w: 100 * r.invSurf / scale, color: "var(--doc-h2)", text: "surface" },
+    { w: 100 * r.invAdh / scale, color: "var(--series-2)", text: "adhesive" },
+    { w: 100 * r.invCoat / scale, color: "var(--doc-w)", text: "coating" },
+  ], g > 0 ? { pos: 100 * capW / scale, text: "getter water ledger " + fmtTL(capW) + " Torr·L" }
+           : { pos: 100 * (P_CRIT * p.volL) / scale, text: "no-getter budget P·V = " + fmtTL(P_CRIT * p.volL) + " Torr·L" });
+  setBar("barLedger", g > 0 ? [
+    { w: 100 * r.ledWT, color: "var(--doc-w)", text: "water " + (r.ledWT * 100).toPrecision(2) + " %" },
+  ] : [], null);
+
+  /* Λ₀ table live loads at the current area and setpoint */
+  const A = p.shieldCm2 * 1e-4, dT = T_SHELL - p.coldK;
+  document.getElementById("tabQhead").textContent =
+    "Load at 10⁻³ Torr, " + fmtVal(p.shieldCm2) + " cm², 293→" + Math.round(p.coldK) + " K";
+  document.getElementById("tabQh2").textContent = fmtW(gasFluxWm2(1e-3, dT, "h2") * A);
+  document.getElementById("tabQch4").textContent = fmtW(gasFluxWm2(1e-3, dT, "ch4") * A);
+  document.getElementById("tabQair").textContent = fmtW(gasFluxWm2(1e-3, dT, "air") * A);
+
+  /* chart 1: warm pressure */
+  const xyr = r.ts.map(t => t / YEAR);
+  const x0 = DAY / YEAR, x1 = 30;
+  let ymax = 10;
+  for (const v of r.pr.tot) if (v > ymax) ymax = v;
+  ymax = 10 ** Math.ceil(Math.log10(ymax * 1.5));
+  const s1 = [
+    { name: "H₂O partial", color: "var(--doc-w)", dash: "2 3", X: xyr, Y: r.pr.w },
+    { name: "H₂ partial", color: "var(--doc-h2)", dash: "2 3", X: xyr, Y: r.pr.h2 },
+    { name: "CH₄ partial", color: "var(--doc-ch4)", dash: "2 3", X: xyr, Y: r.pr.ch4 },
+    { name: "total, no getter", color: "var(--series-2)", X: xyr, Y: r.pr.tot },
+  ];
+  if (g > 0) s1.push({ name: "total, with getter", color: "var(--series-1)", X: xyr, Y: r.pr.get, w: 2.6 });
+  const vm1 = [];
+  if (r.lifeNg != null && r.lifeNg > DAY) vm1.push({ x: r.lifeNg / YEAR, text: "EOL, no getter", color: "var(--series-2)" });
+  if (g > 0 && r.lifeG != null && r.lifeG > DAY) vm1.push({ x: r.lifeG / YEAR, text: "EOL, gettered", color: "var(--series-1)", ty: 26 });
+  c1.draw({
+    x0, x1, y0: 3e-8, y1: ymax,
+    series: s1, vmarks: vm1,
+    hlines: [
+      { y: P_CRIT, text: "10⁻³ Torr — end of life (soft dewar)", color: "var(--doc-crit)" },
+      { y: 1e-4, text: "10⁻⁴ Torr — never-exceed operating level", color: "var(--muted)" },
+    ],
+  });
+  c1.setLegend(s1.map(s => ({ name: s.name, color: s.color, dash: s.dash })));
+
+  /* chart 2: heat load */
+  const act = p.airEquiv ? r.heatAe : r.heatSp;
+  const oth = p.airEquiv ? r.heatSp : r.heatAe;
+  const actName = p.airEquiv ? "air-equivalent (total warm P)" : "species-resolved (H₂ + CH₄, water cryopumped)";
+  const othName = p.airEquiv ? "species-resolved (H₂ + CH₄)" : "air-equivalent (total warm P)";
+  let hmax = 1;
+  for (const v of act) if (v > hmax) hmax = v;
+  for (const v of oth) if (v > hmax) hmax = v;
+  hmax = 10 ** Math.ceil(Math.log10(hmax * 2));
+  const staticLoads = EPS_EFF * SIGMA_SB * A * (T_SHELL ** 4 - p.coldK ** 4) + G_LEADS * (T_SHELL - p.coldK);
+  const margin = Math.max(qLiftW(p.coldK) - staticLoads, 1e-4);
+  const s2 = [
+    { name: actName, color: "var(--series-1)", X: xyr, Y: act, w: 2.4 },
+    { name: othName, color: "var(--muted)", dash: "6 5", X: xyr, Y: oth },
+  ];
+  c2.draw({
+    x0, x1, y0: 1e-5, y1: hmax,
+    series: s2,
+    hlines: [
+      { y: 0.012, text: "12 mW — design allocation (10⁻⁴ Torr air)", color: "var(--muted)" },
+      { y: margin, text: "cooler margin at " + Math.round(p.coldK) + " K ≈ " + fmtW(margin) + " — stall above this", color: "var(--doc-crit)" },
+    ],
+    vmarks: (r.stallT != null && r.stallT > DAY) ? [{ x: r.stallT / YEAR, text: "stall", color: "var(--doc-crit)" }] : [],
+  });
+  c2.setLegend(s2.map(s => ({ name: s.name, color: s.color, dash: s.dash })));
+
+  /* chart 3: cooldown vs life */
+  const xc = r.tc.map(t => t / YEAR);
+  const s3 = [{ name: g > 0 ? "with getter" : "no getter", color: "var(--series-1)",
+                X: xc, Y: r.coolMin.map(v => v == null ? NaN : v), w: 2.4 }];
+  if (r.coolMinNg) s3.push({ name: "same dewar, no getter", color: "var(--series-2)", dash: "6 5",
+                             X: xc, Y: r.coolMinNg.map(v => v == null ? NaN : v) });
+  c3.draw({
+    x0, x1, y0: 1, y1: 300,
+    series: s3,
+    vmarks: (r.stallT != null && r.stallT > DAY) ? [{ x: r.stallT / YEAR, text: "stall — never reaches " + Math.round(p.coldK) + " K", color: "var(--doc-crit)" }] : [],
+    hlines: [{ y: r.coolMin[0] || 12, text: "day-1 baseline", color: "var(--muted)" }],
+  });
+  c3.setLegend(s3.map(s => ({ name: s.name, color: s.color, dash: s.dash })));
+
+  drawSchem(p, r);
+}
+
+recompute();
+</script>
+</body>
+</html>
