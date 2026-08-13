@@ -21,6 +21,18 @@ Interactive and scripted physics models of vacuum systems.
 
   Knobs: crossover pressure (default 100 mTorr; standard practice 50–150 mTorr), tube bore and length, manifold and chamber volume, gas ballast, and an optional adhesive-H₂O outgassing source.
 
+- **[dewar_vacuum_life.html](dewar_vacuum_life.html)** — interactive, self-contained model of the sealed vacuum life of an IR-camera dewar after pinch-off (open in any browser). Python twin: [dewar_vacuum_life.py](dewar_vacuum_life.py) (`--check` for a headless numeric report; its PARITY block must match the page's `__parity()` to ≤0.5 %).
+
+  **There is no outgassing rate to type in.** You pick materials and a getter from datasheet-backed presets — water contents come from each material's measured ASTM E595 record (NASA GSFC outgassing database + vendor datasheets), getter capacities from the Sandia St707 data — and the model tracks the warm pressure over 1 day → 30 years, the gas-conduction heat load on the cold space when operated (area-dependent, species-resolved: the cold shield cryopumps water, so H₂ and CH₄ carry the load — and per Torr they conduct 3.7×/1.7× more than air), and the cooldown-time penalty as the vacuum softens.
+
+  | | Adhesive presets | Cold-shield coatings | Getter |
+  |---|---|---|---|
+  | Options | generic epoxy (1 wt % anchor) · EPO-TEK **H70E** / **353ND** · Stycast **2850FT** · 3M **2216** gray | Lord **Aeroglaze Z306** paint · **Acktar** vacuum-deposited black · bare metal | St707-class Zr-V-Fe, 0.25–2 g |
+  | Water content | E595 WVR: 0.10–0.35 wt % (generic 1.0) | Z306 0.6 wt % at 1.12 g/cm³ · Acktar 2 wt % of a 3–5 µm film | dual ledger: 2.4 Torr·L/g H₂O, 170 Torr·L/g H₂ |
+  | The point | vent area sets L = V/A — buried bond lines dry slowest | 40 cm² × 60 µm of Z306 ≈ 1.6 Torr·L — two-thirds of a 1 g getter's water ledger | blind to CH₄, which alone sets the ~10 yr ceiling |
+
+  Knobs: bake temperature/duration, storage temperature, adhesive volume and vent area, cold-shield area (one knob — the coated surface *and* the conduction area), coating thickness, internal metal area, free volume, FPA setpoint 80–150 K (the HOT-detector trade), and target life. The headline answers are the sealed life to 10⁻³ Torr and the **required bake for a target life** — the inverse question, which the model's error budget determines ×2.5 rather than the ×25 of life-at-fixed-bake (see `dewar_vacuum_model/REVIEW.md`). New material constants live in [research/data/dewar_life_materials.json](research/data/dewar_life_materials.json) with a source per entry.
+
 - **[dewar_vacuum_model/](dewar_vacuum_model/)** — Python model of vacuum bakeout, sealed vacuum life, and cooldown for an infrared detector dewar. See its [README](dewar_vacuum_model/README.md) for usage.
 - **[tools/serve.py](tools/serve.py)** — dev server that serves the model copy you actually just edited and auto-reloads the browser. See below.
 
