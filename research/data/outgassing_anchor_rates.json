@@ -1,0 +1,60 @@
+{
+ "description": "Literature anchor rates and inventories used across the models. Units noted per entry. Sources are cited by name only (no links) by project policy.",
+ "entries": [
+  {
+   "name": "water_unbaked_metal_1_over_t",
+   "value": "q ~ 3e-9/t[h] mbar.L/s/cm2 (2.2e-9 torr units at 1 h)",
+   "source": "Chiggiato, CERN Accelerator School lecture notes on outgassing (2017); Grinham & Chew, Appl. Sci. Converg. Technol. 26(5), 95 (2017)"
+  },
+  {
+   "name": "water_desorption_energy_window",
+   "value": "~0.75-1.15 eV (lit. 0.9-1.06), nu=1e13 /s",
+   "source": "Redhead JVST A 13,467 (1995); Li & Dylla JVST A 11,1702 (1993); Chiggiato, CERN Yellow Rep., arXiv:2006.07124"
+  },
+  {
+   "name": "monolayer_conversion",
+   "value": "1e15 molecules/cm2 = 3.05e-5 torr.L/cm2 at 295 K; 1 mg H2O = 1.02 torr.L",
+   "source": "ideal-gas accounting, computed"
+  },
+  {
+   "name": "H2_baked_steel",
+   "value": "3e-12 mbar.L/s/cm2 after 150C x 24 h; band used 1e-13..3e-12 torr units",
+   "source": "Chiggiato, CERN Accelerator School lecture notes on outgassing (2017)"
+  },
+  {
+   "name": "CH4_steel",
+   "value": "~1e-15 torr.L/s/cm2 (rough, ~decade uncertainty) - sets gettered EOL ceiling",
+   "source": "project inference bounded by 10-yr-class field life; see vacuum_degradation_sources.md"
+  },
+  {
+   "name": "polymer_water_content",
+   "value": "0.2-1+ wt% (Viton 0.21, Vespel ~1); polymers ~500x metal outgassing",
+   "source": "Chiggiato, CERN Yellow Rep., arXiv:2006.07124"
+  },
+  {
+   "name": "epoxy_water_diffusivity",
+   "value": "D(295K) ~ 2e-9 cm2/s (range 5e-10..8e-9), Ea ~ 0.45 eV (0.35-0.55)",
+   "source": "epoxy moisture literature incl. dual-stage studies (Microelectron. Reliab. 2019 S0026271419311771; IEEE ECTC 2008 4525009)"
+  },
+  {
+   "name": "outgassing_share_of_gas_load",
+   "value": "~90% of total gas load in high-vacuum systems; 75-95% water near 1e-3 mbar",
+   "source": "Grinham & Chew, Appl. Sci. Converg. Technol. 26(5), 95 (2017)"
+  },
+  {
+   "name": "getter_capacities_St707",
+   "value": "H2 ~170 torr.L/g saturation (225 std cc/g); H2O ~2.4 torr.L/g (est.); activation ~400C x 45 min",
+   "source": "Sandia National Labs St707 getter data report 105402 (via the UChicago PSEC getter library); UChicago PSEC getter note on St707 H2O monolayer capacity"
+  },
+  {
+   "name": "ice_optics_budget",
+   "value": "IR ice bands 3.16/4.6/6.1/13 um; ~0.1 um on cold filter measurable; ~1 um severe at 3.0-3.1 um",
+   "source": "AFRL/DTIC ADA443824"
+  },
+  {
+   "name": "epoxy_offgas_composition",
+   "value": "water-dominated at <=100 C (ASTM E595 reports WVR separately); organics minor (CVCM species); CO2 small; CO not from glue at low T",
+   "source": "ASTM E595 framework; Master Bond low-outgassing guide; JVST B epoxy TD-GC study (title-verified, paywalled)"
+  }
+ ]
+}

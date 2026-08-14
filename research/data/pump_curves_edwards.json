@@ -1,0 +1,122 @@
+{
+ "description": "Edwards pump-station speed curves used as simulator defaults. Units: [Torr, L/s]. Sources are cited by name only (no links) by project policy.",
+ "station_rule": "S(P) = max(turbo*k, scroll); k = user turbo plateau / 84; log-log interpolation, end-clamped",
+ "scroll_nXDS10iC": {
+  "points_torr_Ls": [
+   [
+    0.00525,
+    0.0001
+   ],
+   [
+    0.01,
+    0.5
+   ],
+   [
+    0.03,
+    1.4
+   ],
+   [
+    0.1,
+    2.3
+   ],
+   [
+    0.3,
+    2.8
+   ],
+   [
+    1.0,
+    3.1
+   ],
+   [
+    10.0,
+    3.17
+   ],
+   [
+    100.0,
+    3.0
+   ],
+   [
+    760.0,
+    2.6
+   ]
+  ],
+  "anchors": {
+   "peak_m3h": 11.4,
+   "peak_Ls": 3.17,
+   "ultimate_mbar": 0.007,
+   "displacement_m3h": 12.7
+  },
+  "anchor_source": "Edwards nXDS10i catalog specifications (nXDS brochure 3601-0088-01 and vendor listings for the nXDS10iC corrosion-resistant build)",
+  "digitized_approximate": true,
+  "shape_source": "digitized typical characteristic between catalog anchors (approximate)",
+  "note": "nXDS10iC is the SCROLL (roughing) pump - the 'C' is the corrosion-resistant variant, not a turbo"
+ },
+ "turbo_nEXT85_DN63": {
+  "points_torr_Ls": [
+   [
+    1e-09,
+    84
+   ],
+   [
+    0.00075,
+    84
+   ],
+   [
+    0.0025,
+    80
+   ],
+   [
+    0.0075,
+    68
+   ],
+   [
+    0.025,
+    47
+   ],
+   [
+    0.075,
+    26
+   ],
+   [
+    0.25,
+    11
+   ],
+   [
+    0.75,
+    3.5
+   ],
+   [
+    2.5,
+    1.0
+   ],
+   [
+    7.5,
+    0.25
+   ],
+   [
+    13.5,
+    0.05
+   ]
+  ],
+  "anchors": {
+   "peak_N2_Ls": 84,
+   "peak_He_Ls_range": [
+    61,
+    80
+   ],
+   "peak_H2_Ls_range": [
+    44,
+    60
+   ],
+   "critical_backing_mbar": 18,
+   "compression_N2": ">1e11",
+   "compression_He": "8e6-2e7",
+   "compression_H2": "2e5-5e5",
+   "recommended_backing": "nXDS15",
+   "rpm": 90000
+  },
+  "anchor_source": "Edwards nEXT turbomolecular pump brochure",
+  "digitized_approximate": true,
+  "shape_source": "digitized typical characteristic between catalog anchors (approximate)"
+ }
+}

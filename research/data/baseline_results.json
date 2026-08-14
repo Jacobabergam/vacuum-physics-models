@@ -1,0 +1,68 @@
+{
+ "description": "Key computed results of this project (representative baseline). Regenerate: dewar_vacuum_model/run_model.py, mc_figures.py, fig_sources.py, bottleneck_pumpdown.py --check.",
+ "geometry": {
+  "A_cold_cm2": 40,
+  "gap_mm": 5,
+  "T_shell_K": 293,
+  "T_cold_K": 80,
+  "steel_cm2": 300,
+  "V_free_L": 0.1,
+  "alpha_air": 0.9
+ },
+ "gas_conduction_mW_air": {
+  "1e-5": 1.2,
+  "1e-4": 12.0,
+  "1e-3": 116,
+  "1e-2": 862
+ },
+ "vacuum_requirement_torr": {
+  "pinch_off": "1e-6..1e-5",
+  "operating_max": 0.0001,
+  "end_of_life": 0.001,
+  "hard_fail": "~1e-2"
+ },
+ "life_budget": {
+  "PV_torrL": 0.0001,
+  "allow_10yr_torrL_s": 3.17e-13,
+  "allow_10yr_atmcc_s": 4.2e-13,
+  "gettered_Ar_air_leak_limit_torrL_s": 3.4e-11,
+  "getter_capacity_ROR_allow_torr_per_day_0p1L": 0.0055
+ },
+ "bake_85C": {
+  "knee_days_nominal": 10,
+  "required_bake_10yr_days_MC": {
+   "median": "~20",
+   "p16_p84": "~5-60"
+  },
+  "surface_water_clear": "hours",
+  "polymer_tau1_85C_h": {
+   "0.3mm": 2.25,
+   "1mm": 24.8
+  }
+ },
+ "ungettered_H2_life_days": [
+  1.3,
+  39
+ ],
+ "gettered_CH4_EOL_years": {
+  "nominal": 10.6,
+  "band": [
+   3.5,
+   35
+  ]
+ },
+ "cooldown": {
+  "m15g_1e-6_min": 12.1,
+  "at_1e-3_min": 13.3,
+  "stall_torr": "~1e-2",
+  "stall_T_K": 109
+ },
+ "simulator_parity": {
+  "default_walls_on_min": 76.3,
+  "walls_off_min": 24.0,
+  "ideal_min": 5.4,
+  "og_hours": 7.71,
+  "leak_1e-6_floor_torr": 9.5e-07
+ },
+ "source": "this project's sessions, 2026-07-15..08-01; scripts in repo"
+}
