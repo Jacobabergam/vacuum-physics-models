@@ -53,6 +53,14 @@
   h1 { font-size: 21px; font-weight: 650; letter-spacing: -0.01em; }
   .sub { color: var(--text-2); max-width: 78ch; }
 
+  .modelnav { display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+              font-size: 12.5px; color: var(--muted); }
+  .modelnav a { color: var(--text-2); text-decoration: none; padding: 3px 10px;
+                border: 1px solid var(--border); border-radius: 999px; background: var(--surface-1); }
+  .modelnav a[href]:hover { color: var(--text-1); border-color: var(--baseline); }
+  .modelnav a[aria-current="page"] { color: var(--text-1); font-weight: 600;
+                border-color: var(--series-1); }
+
   .app { display: grid; grid-template-columns: minmax(0, 1fr) 292px; gap: 14px; align-items: start; }
   @media (max-width: 900px) { .app { grid-template-columns: 1fr; } .sidebar { position: static; } }
 
@@ -158,6 +166,11 @@
 </head>
 <body class="viz-root">
 <div class="wrap">
+  <nav class="modelnav" aria-label="Vacuum model pages">
+    <span>Vacuum models:</span>
+    <a href="bottleneck_pumpdown.html">Bottleneck pumpdown</a>
+    <a aria-current="page">Dewar vacuum life</a>
+  </nav>
   <div>
     <h1>IR-camera dewar vacuum life: outgassing, getter budget, heat load</h1>
     <div class="sub">A cooled IR detector lives inside a pinched-off vacuum dewar. After seal-off there is no
