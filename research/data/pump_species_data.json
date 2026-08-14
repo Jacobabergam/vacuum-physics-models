@@ -1,0 +1,45 @@
+{
+ "description": "Species-resolved pump, trap, and wall-gas constants for the bottleneck_pumpdown simulators (added with the three-species model, 2026-08-12). Units noted per entry. Sources are cited by name only (no links) by project policy.",
+ "entries": [
+  {
+   "name": "nEXT300D_species_speeds",
+   "value": "S(N2)=300, S(He)=340, S(H2)=280 L/s; S(H2O)=300 L/s assumed equal to N2 (close but not exact)",
+   "source": "Edwards nEXT instruction manual B800-00-880; SIS nEXT300D specification table; H2O=N2 is an assumption, flagged in-app"
+  },
+  {
+   "name": "nEXT300D_compression_ratios",
+   "value": "K(N2)>1e11 (1e11 used), K(He)=1e6, K(H2)=5e4; catalog ultimate 8e-8 mbar ISO-K dry backing, assigned to the H2 channel as back-leak",
+   "source": "SIS nEXT300D specification table; Edwards nEXT instruction manual B800-00-880"
+  },
+  {
+   "name": "cryotorr8_speeds_capacities",
+   "value": "S(H2O)=4000, S(air)=1500, S(H2)=2500, S(Ar)=1200 L/s; capacity Ar 1000 std.L (used for air), H2 17 std.L; crossover 150 Torr.L; cooldown ~90 min",
+   "source": "CTI-Cryogenics Cryo-Torr 100/7/8/8F product manual"
+  },
+  {
+   "name": "cryotorr8_representative_values",
+   "value": "H2O frost budget 300 std.L; blank-off 1e-9 Torr on the H2 channel; linear speed derate vs ledger fill",
+   "source": "project assumptions (manual publishes no water capacity or blank-off) - flagged representative in-app and here"
+  },
+  {
+   "name": "water_kinetic_arrival_rate",
+   "value": "S/A = 3.638*sqrt(T/M) L/s/cm2 = 14.66 for H2O at 295 K; sticking 0.95 below ~130 K (representative)",
+   "source": "kinetic theory area rate (standard form, e.g. Roth Vacuum Technology ch. 3 / O'Hanlon); sticking coefficient representative of cryosurface literature"
+  },
+  {
+   "name": "ice_vapor_pressure_77K",
+   "value": "~1e-21 Torr at 77 K (back-leak treated as zero); ~1e-11 near 100 K; ~1e-6 near 130 K - sets minimum trap temperature per target pressure",
+   "source": "Murphy & Koop, QJRMS 131, 1539 (2005) extrapolation; Honig & Hook vapor-pressure tables (qualitative anchor)"
+  },
+  {
+   "name": "rougher_seal_backstream_split",
+   "value": "chi = 0.70 air / 0.30 H2O / 1e-5 H2 of the rougher ultimate, for foreline partial apportionment",
+   "source": "project estimate (scroll seal back-streaming is air/condensable dominated; atmospheric H2 ~0.5 ppm) - assumption, low sensitivity: H2 back-leak stays negligible vs the catalog-ultimate term for any plausible split"
+  },
+  {
+   "name": "H2_wall_rate_simulators",
+   "value": "3e-12 Torr.L/s/cm2 constant, chamber (300 cm2) + manifold (600 cm2) - same anchor as H2_baked_steel band in outgassing_anchor_rates.json",
+   "source": "Chiggiato, CERN Accelerator School lecture notes / arXiv:2006.07124 (band 1e-13..3e-12 for unfired austenitic steel)"
+  }
+ ]
+}
